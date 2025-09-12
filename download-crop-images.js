@@ -23,7 +23,7 @@ const downloadImage = (url, filename) => {
 // Professional crop images from Unsplash (using specific photo IDs for consistency)
 const cropImages = {
   // Vegetables
-  tomato: 'https://images.unsplash.com/photo-1546470427-e212b5ac5edc?w=300&h=300&fit=crop&crop=center',
+  tomato: 'https://images.unsplash.com/photo-1607305387299-a3d9611cd469?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8dG9tYXRvfGVufDB8fDB8fHww',
   potato: 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=300&h=300&fit=crop&crop=center',
   onion: 'https://images.unsplash.com/photo-1508747703725-719777637510?w=300&h=300&fit=crop&crop=center',
   carrot: 'https://images.unsplash.com/photo-1445282768818-728615cc910a?w=300&h=300&fit=crop&crop=center',

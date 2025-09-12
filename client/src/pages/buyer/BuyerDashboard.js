@@ -11,6 +11,7 @@ function BuyerDashboard() {
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
   const [priceRange, setPriceRange] = useState({ min: '', max: '' });
@@ -26,6 +27,15 @@ function BuyerDashboard() {
     { id: 'herbs', name: 'Herbs', icon: '🌿' },
     { id: 'nuts', name: 'Nuts', icon: '🌰' }
   ];
+
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   // Fetch products
   useEffect(() => {
@@ -50,11 +60,21 @@ function BuyerDashboard() {
     let filtered = [...products];
 
     // Filter by search term
-    if (searchTerm) {
-      filtered = filtered.filter(product =>
-        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.description.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+    if (debouncedSearchTerm) {
+      const searchTermLower = debouncedSearchTerm.toLowerCase();
+      filtered = filtered.filter(product => {
+        const productName = product.name ? product.name.toLowerCase() : '';
+        const productDescription = product.description ? product.description.toLowerCase() : '';
+        const productCategory = product.category ? product.category.toLowerCase() : '';
+        const productFarmerName = product.farmerId?.name ? product.farmerId.name.toLowerCase() : '';
+        
+        return (
+          productName.includes(searchTermLower) ||
+          productDescription.includes(searchTermLower) ||
+          productCategory.includes(searchTermLower) ||
+          productFarmerName.includes(searchTermLower)
+        );
+      });
     }
 
     // Filter by category
@@ -75,7 +95,7 @@ function BuyerDashboard() {
     }
 
     setFilteredProducts(filtered);
-  }, [products, searchTerm, selectedCategory, priceRange]);
+  }, [products, debouncedSearchTerm, selectedCategory, priceRange]);
 
   // Sort products
   const sortedProducts = [...filteredProducts].sort((a, b) => {
@@ -279,12 +299,35 @@ function BuyerDashboard() {
                   placeholder="Search for fresh vegetables, fruits, grains..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      // Search is already happening via useEffect, so no additional action needed
+                    }
+                  }}
                   className="w-full px-4 py-3 pr-12 bg-white border-2 border-gray-300 rounded-lg focus:border-emerald-500 focus:outline-none text-gray-800 placeholder-gray-500"
                 />
-                <button className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-emerald-500 hover:bg-emerald-600 text-white p-2 rounded-md transition-colors">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
+                <button 
+                  onClick={() => {
+                    // Clear search if there's a term, otherwise focus input
+                    if (searchTerm) {
+                      setSearchTerm('');
+                    } else {
+                      document.querySelector('input[placeholder*="Search for fresh"]').focus();
+                    }
+                  }}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-emerald-500 hover:bg-emerald-600 text-white p-2 rounded-md transition-colors"
+                  title={searchTerm ? "Clear search" : "Search"}
+                >
+                  {searchTerm ? (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  )}
                 </button>
               </div>
 
@@ -393,7 +436,7 @@ function BuyerDashboard() {
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-2xl font-bold text-white">
-              {searchTerm ? `Results for "${searchTerm}"` : selectedCategory === 'all' ? 'All Products' : categories.find(c => c.id === selectedCategory)?.name}
+              {debouncedSearchTerm ? `Results for "${debouncedSearchTerm}"` : selectedCategory === 'all' ? 'All Products' : categories.find(c => c.id === selectedCategory)?.name}
             </h2>
             <span className="text-slate-400 bg-slate-800 px-3 py-1 rounded-full text-sm">
               {sortedProducts.length} items found

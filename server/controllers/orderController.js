@@ -209,6 +209,16 @@ const updateOrderStatus = async (req, res) => {
     order.updatedAt = Date.now();
     await order.save();
 
+    // If order is marked as ready, find and assign nearest driver
+    if (status === 'ready') {
+      try {
+        await assignNearestDriver(order);
+      } catch (error) {
+        console.error('Error assigning driver:', error);
+        // Continue even if driver assignment fails
+      }
+    }
+
     const updatedOrder = await Order.findById(orderId)
       .populate('buyer', 'name email phone')
       .populate('items.product', 'name price unit image')
@@ -302,11 +312,101 @@ const cancelOrder = async (req, res) => {
   }
 };
 
+// Helper function to assign nearest available driver
+const assignNearestDriver = async (order) => {
+  try {
+    const Driver = require('../models/Driver');
+    
+    // Get delivery address coordinates (assuming they're stored)
+    // For now, we'll use a default location or farmer's location
+    const buyerLocation = {
+      latitude: 40.7128, // Default NYC coordinates - should be from buyer's address
+      longitude: -74.0060
+    };
+
+    // Find available drivers within radius
+    const availableDrivers = await Driver.find({
+      'availability.isAvailable': true,
+      'location.latitude': { $ne: null },
+      'location.longitude': { $ne: null }
+    });
+
+    if (availableDrivers.length === 0) {
+      console.log('No available drivers found for order:', order._id);
+      return;
+    }
+
+    // Calculate distances and find nearest driver
+    const driversWithDistance = availableDrivers.map(driver => {
+      const distance = calculateDistance(
+        buyerLocation.latitude,
+        buyerLocation.longitude,
+        driver.location.latitude,
+        driver.location.longitude
+      );
+      return { driver, distance };
+    }).sort((a, b) => a.distance - b.distance);
+
+    const nearestDriver = driversWithDistance[0];
+    
+    if (nearestDriver.distance > 50) { // 50km radius limit
+      console.log('No drivers within acceptable range for order:', order._id);
+      return;
+    }
+
+    // Update order status to ready_for_pickup
+    order.status = 'ready_for_pickup';
+    order.driver = {
+      driverId: null, // Will be assigned when driver accepts
+      assignedAt: null,
+      status: 'pending_assignment'
+    };
+    await order.save();
+
+    // Send notification to nearest drivers (top 3)
+    const topDrivers = driversWithDistance.slice(0, 3);
+    const io = global.io;
+    
+    if (io) {
+      for (const { driver } of topDrivers) {
+        io.emit('newOrderAvailable', {
+          orderId: order._id,
+          buyerLocation: buyerLocation,
+          estimatedDistance: driver.distance,
+          orderValue: order.totalAmount,
+          message: 'New delivery order available!'
+        });
+      }
+    }
+
+    console.log(`Order ${order._id} marked as ready for pickup, ${topDrivers.length} drivers notified`);
+
+  } catch (error) {
+    console.error('Error in assignNearestDriver:', error);
+    throw error;
+  }
+};
+
+// Helper function to calculate distance between two points
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371; // Radius of the Earth in kilometers
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const distance = R * c; // Distance in kilometers
+  return distance;
+};
+
 module.exports = {
   createOrder,
   getBuyerOrders,
   getFarmerOrders,
   getOrderById,
   updateOrderStatus,
-  cancelOrder
+  cancelOrder,
+  assignNearestDriver
 };
