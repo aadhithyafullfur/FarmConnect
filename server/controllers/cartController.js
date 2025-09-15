@@ -4,7 +4,7 @@ const Product = require('../models/Product');
 // Get user's cart
 exports.getCart = async (req, res) => {
   try {
-    const cart = await Cart.findOne({ userId: req.user._id })
+    const cart = await Cart.findOne({ userId: req.user.id })
       .populate({
         path: 'items.productId',
         populate: {
@@ -31,8 +31,19 @@ exports.getCart = async (req, res) => {
 // Add item to cart
 exports.addToCart = async (req, res) => {
   try {
-    const { productId, quantity, notes } = req.body;
-    const userId = req.user._id;
+    const { productId, quantity = 1, notes = '' } = req.body;
+    const userId = req.user.id;
+
+    console.log('Cart add request - userId:', userId, 'productId:', productId, 'quantity:', quantity);
+
+    // Validate request body
+    if (!productId) {
+      return res.status(400).json({ error: 'Product ID is required' });
+    }
+
+    if (typeof quantity !== 'number' || quantity < 1) {
+      return res.status(400).json({ error: 'Invalid quantity. Must be a positive number.' });
+    }
 
     // Validate product
     const product = await Product.findById(productId);
@@ -49,9 +60,9 @@ exports.addToCart = async (req, res) => {
     }
 
     // Find or create cart
-    let cart = await Cart.findOne({ userId });
+    let cart = await Cart.findOne({ userId: userId });
     if (!cart) {
-      cart = new Cart({ userId, items: [] });
+      cart = new Cart({ userId: userId, items: [] });
     }
 
     // Check if item already exists in cart
@@ -100,7 +111,7 @@ exports.updateCartItem = async (req, res) => {
   try {
     const { itemId } = req.params;
     const { quantity, notes } = req.body;
-    const userId = req.user._id;
+    const userId = req.user.id;
 
     const cart = await Cart.findOne({ userId });
     if (!cart) {
@@ -146,7 +157,7 @@ exports.updateCartItem = async (req, res) => {
 exports.removeFromCart = async (req, res) => {
   try {
     const { itemId } = req.params;
-    const userId = req.user._id;
+    const userId = req.user.id;
 
     const cart = await Cart.findOne({ userId });
     if (!cart) {
@@ -178,7 +189,7 @@ exports.removeFromCart = async (req, res) => {
 // Clear cart
 exports.clearCart = async (req, res) => {
   try {
-    const userId = req.user._id;
+    const userId = req.user.id;
 
     await Cart.findOneAndUpdate(
       { userId },

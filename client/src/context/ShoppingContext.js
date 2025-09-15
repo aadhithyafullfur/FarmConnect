@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AuthContext } from './AuthContext';
+import api from '../services/api';
 
 const ShoppingContext = createContext();
 
@@ -44,12 +45,11 @@ export const ShoppingContextProvider = ({ children }) => {
     }
   }, [wishlist]);
 
-  const loadCart = () => {
+  const loadCart = async () => {
     try {
-      const savedCart = localStorage.getItem('cart');
-      if (savedCart) {
-        const parsedCart = JSON.parse(savedCart);
-        setCart(parsedCart);
+      if (user) {  // Only load cart if user is logged in
+        const response = await api.get('/cart');
+        setCart(response.data.items || []);
       }
     } catch (error) {
       console.error('Error loading cart:', error);
@@ -70,31 +70,37 @@ export const ShoppingContextProvider = ({ children }) => {
     }
   };
 
-  const addToCart = (product, quantity = 1) => {
+  const addToCart = async (product, quantity = 1) => {
     try {
-      const existingItem = cart.find(item => item._id === product._id);
-      let newCart;
-      
-      if (existingItem) {
-        newCart = cart.map(item => 
-          item._id === product._id 
-            ? { ...item, quantity: item.quantity + quantity }
-            : item
-        );
-      } else {
-        newCart = [...cart, { ...product, quantity }];
+      // Ensure we have a valid product and product._id
+      if (!product || !product._id) {
+        console.error('Invalid product:', product);
+        showNotification('Invalid product data', 'error');
+        return { success: false, message: 'Invalid product data' };
       }
+
+      const response = await api.post('/cart/add', {
+        productId: product._id,
+        quantity: quantity || 1,
+        notes: product.specialNotes || ''
+      });
       
-      setCart(newCart);
-      
-      // Show success notification
-      showNotification(`${product.name} added to cart!`, 'success');
-      
-      return { success: true, message: 'Product added to cart' };
+      if (response.data && response.data.cart) {
+        // Update cart with the new cart data from server
+        setCart(response.data.cart.items || []);
+        
+        // Show success notification
+        showNotification(`${product.name} added to cart!`, 'success');
+        return { success: true, message: 'Product added to cart' };
+      }
+
+      return { success: false, message: 'Failed to add to cart' };
     } catch (error) {
       console.error('Error adding to cart:', error);
-      showNotification('Failed to add product to cart', 'error');
-      return { success: false, message: 'Failed to add to cart' };
+      // More detailed error message
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to add to cart';
+      showNotification(errorMessage, 'error');
+      return { success: false, message: errorMessage };
     }
   };
 

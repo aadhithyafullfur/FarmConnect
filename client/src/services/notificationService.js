@@ -14,7 +14,7 @@ class NotificationService {
       this.disconnect();
     }
 
-    this.socket = io(process.env.REACT_APP_API_URL || 'http://localhost:5000', {
+    this.socket = io(process.env.REACT_APP_API_URL || 'http://localhost:5003', {
       transports: ['websocket', 'polling'],
       timeout: 20000,
       forceNew: true

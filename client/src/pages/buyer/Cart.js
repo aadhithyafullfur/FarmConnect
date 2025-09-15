@@ -17,7 +17,15 @@ function Cart() {
     try {
       setLoading(true);
       const response = await api.get('/cart');
-      setCartItems(response.data.items || []); // Extract items array from cart response
+      console.log('Cart response:', response.data); // Debug log
+      if (response.data && Array.isArray(response.data.items)) {
+        setCartItems(response.data.items);
+      } else if (response.data && typeof response.data === 'object') {
+        // Handle single item case
+        setCartItems([response.data]);
+      } else {
+        setCartItems([]);
+      }
     } catch (error) {
       console.error('Error fetching cart:', error);
       setCartItems([]);
@@ -33,12 +41,18 @@ function Cart() {
     }
 
     try {
-      await api.put(`/cart/update/${productId}`, { quantity: newQuantity });
-      setCartItems(cartItems.map(item => 
-        item.productId._id === productId 
-          ? { ...item, quantity: newQuantity }
-          : item
-      ));
+      const response = await api.put(`/cart/update/${productId}`, { quantity: newQuantity });
+      if (response.data && response.data.cart) {
+        // Update with server response
+        setCartItems(response.data.cart.items);
+      } else {
+        // Fallback to local update
+        setCartItems(cartItems.map(item => 
+          item.productId._id === productId 
+            ? { ...item, quantity: newQuantity }
+            : item
+        ));
+      }
     } catch (error) {
       console.error('Error updating quantity:', error);
       alert('Failed to update quantity');
@@ -91,9 +105,28 @@ function Cart() {
         totalAmount: getTotalAmount()
       };
 
-      await api.post('/orders', orderData);
+      const response = await api.post('/orders', orderData);
       await clearCart();
-      alert('Order placed successfully!');
+      
+      // Show success modal with order details
+      const orderDetails = response.data;
+      const farmers = [...new Set(cartItems.map(item => item.productId.farmerId?.name))];
+      
+      const message = `
+        Order placed successfully! 🎉
+        Order ID: ${orderDetails._id}
+        Total Amount: ₹${orderDetails.totalAmount.toFixed(2)}
+        
+        Your order will be delivered to:
+        ${deliveryAddress}
+        
+        Farmers have been notified:
+        ${farmers.join(', ')}
+        
+        You will receive updates about your order status.
+      `;
+      
+      alert(message);
       
       // Reset form
       setDeliveryAddress('');
@@ -158,13 +191,40 @@ function Cart() {
             <div key={item.productId._id} className="bg-gray-800/50 rounded-2xl p-6 border border-gray-700/50">
               <div className="flex items-center gap-4">
                 {/* Product Image */}
-                {item.productId.image && (
-                  <img
-                    src={`http://localhost:5000${item.productId.image}`}
-                    alt={item.productId.name}
-                    className="w-20 h-20 object-cover rounded-xl"
-                  />
-                )}
+                <div className="relative">
+                  {item.productId.image ? (
+                    <img
+                      src={item.productId.image.startsWith('http') ? item.productId.image : `http://localhost:5003${item.productId.image}`}
+                      alt={item.productId.name}
+                      className="w-24 h-24 object-cover rounded-xl"
+                      onError={(e) => {
+                        if (item.productId.cropType) {
+                          e.target.src = `/crops/${item.productId.cropType}.jpg`;
+                        } else {
+                          e.target.style.display = 'none';
+                          e.target.parentElement.innerHTML = '<div class="w-24 h-24 flex items-center justify-center text-slate-400 bg-slate-800 rounded-xl"><span class="text-4xl">🌾</span></div>';
+                        }
+                      }}
+                    />
+                  ) : item.productId.cropType ? (
+                    <img 
+                      src={`/crops/${item.productId.cropType}.jpg`}
+                      alt={item.productId.name}
+                      className="w-24 h-24 object-cover rounded-xl"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.parentElement.innerHTML = '<div class="w-24 h-24 flex items-center justify-center text-slate-400 bg-slate-800 rounded-xl"><span class="text-4xl">🌾</span></div>';
+                      }}
+                    />
+                  ) : (
+                    <div className="w-24 h-24 flex items-center justify-center text-slate-400 bg-slate-800 rounded-xl">
+                      <span className="text-4xl">🌾</span>
+                    </div>
+                  )}
+                  {item.productId.isFeatured && (
+                    <span className="absolute -top-2 -right-2 bg-yellow-500 text-xs text-white px-2 py-1 rounded-full">Featured</span>
+                  )}
+                </div>
 
                 {/* Product Details */}
                 <div className="flex-1">
@@ -174,16 +234,40 @@ function Cart() {
                   <p className="text-gray-400 text-sm mt-1">
                     {item.productId.description?.substring(0, 100)}...
                   </p>
-                  <div className="flex items-center gap-4 mt-2">
+                  
+                  {/* Farmer Info */}
+                  <div className="flex items-center gap-3 mt-2">
+                    <div className="w-8 h-8 bg-green-900/30 rounded-full flex items-center justify-center text-green-400">
+                      👨‍🌾
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium text-green-400">{item.productId.farmerId?.name || 'Local Farmer'}</div>
+                      <div className="text-xs text-gray-400">
+                        {item.productId.farmerId?.location?.city}, {item.productId.farmerId?.location?.state}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center flex-wrap gap-2 mt-3">
                     <span className="text-green-400 font-semibold">
                       ₹{item.productId.price} per {item.productId.unit}
                     </span>
-                    <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs">
+                    <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded-full text-xs">
                       {item.productId.category}
                     </span>
                     {item.productId.organicCertified && (
-                      <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs">
+                      <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded-full text-xs">
                         🌿 Organic
+                      </span>
+                    )}
+                    {item.productId.inSeason && (
+                      <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-xs">
+                        🌞 In Season
+                      </span>
+                    )}
+                    {item.productId.freshlyHarvested && (
+                      <span className="px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded-full text-xs">
+                        ✨ Freshly Harvested
                       </span>
                     )}
                   </div>

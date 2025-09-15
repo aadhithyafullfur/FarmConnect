@@ -128,7 +128,7 @@ function BuyerDashboard() {
         <div className="relative h-56 bg-slate-700 overflow-hidden">
           {product.image ? (
             <img 
-              src={product.image.startsWith('http') ? product.image : `http://localhost:5001${product.image}`} 
+              src={product.image.startsWith('http') ? product.image : `http://localhost:5003${product.image}`} 
               alt={product.name}
               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
               onError={(e) => {
@@ -232,7 +232,13 @@ function BuyerDashboard() {
           {/* Action Buttons */}
           <div className="flex gap-2">
             <button
-              onClick={() => addToCart(product)}
+              onClick={async () => {
+                const result = await addToCart(product);
+                if (result.success) {
+                  // Optionally show a success toast/notification
+                  console.log('Added to cart:', product.name);
+                }
+              }}
               disabled={!inStock}
               className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-all ${
                 inStock
