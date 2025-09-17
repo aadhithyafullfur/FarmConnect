@@ -7,15 +7,22 @@ const { createNotification } = require('./notificationController');
 // Create new order
 const createOrder = async (req, res) => {
   try {
+    console.log('=== ORDER CREATION REQUEST ===');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    console.log('User ID:', req.user.id);
+    console.log('==============================');
+
     const { items, deliveryAddress, paymentMethod, specialInstructions, totalAmount } = req.body;
     const buyerId = req.user.id;
 
     // Validate required fields
     if (!items || items.length === 0) {
+      console.error('Validation failed: No items in order');
       return res.status(400).json({ error: 'No items in order' });
     }
 
     if (!deliveryAddress) {
+      console.error('Validation failed: Delivery address is required');
       return res.status(400).json({ error: 'Delivery address is required' });
     }
 
@@ -37,7 +44,9 @@ const createOrder = async (req, res) => {
         product: product._id,
         quantity: item.quantity,
         price: item.price || product.price,
-        farmer: product.farmer
+        farmer: product.farmerId,
+        productName: product.name,
+        unit: product.unit
       });
 
       calculatedTotal += (item.price || product.price) * item.quantity;
@@ -49,25 +58,40 @@ const createOrder = async (req, res) => {
 
     // Create order
     const order = new Order({
-      buyer: buyerId,
-      items: orderItems,
-      deliveryAddress,
-      paymentMethod: paymentMethod || 'cod',
-      specialInstructions,
+      orderId: 'ORD-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
+      buyerId: buyerId,
+      items: orderItems.map(item => ({
+        productId: item.product,
+        farmerId: item.farmer,
+        productName: item.productName || 'Product',
+        quantity: item.quantity,
+        pricePerUnit: item.price,
+        totalPrice: item.price * item.quantity,
+        unit: item.unit || 'kg'
+      })),
       totalAmount: calculatedTotal,
-      status: 'pending'
+      finalAmount: calculatedTotal,
+      paymentMethod: paymentMethod || 'cash',
+      status: 'pending',
+      deliveryInfo: {
+        type: 'delivery',
+        address: {
+          street: deliveryAddress // Store the full address as street for now
+        },
+        instructions: specialInstructions
+      }
     });
 
     await order.save();
 
     // Clear user's cart
-    await Cart.findOneAndDelete({ user: buyerId });
+    await Cart.findOneAndDelete({ userId: buyerId });
 
     // Populate order details
     const populatedOrder = await Order.findById(order._id)
-      .populate('buyer', 'name email')
-      .populate('items.product', 'name price unit image')
-      .populate('items.farmer', 'name email');
+      .populate('buyerId', 'name email')
+      .populate('items.productId', 'name price unit image')
+      .populate('items.farmerId', 'name email');
 
     // Send notifications to farmers
     const farmerNotifications = [];
@@ -92,7 +116,7 @@ const createOrder = async (req, res) => {
           amount: calculatedTotal,
           status: 'pending',
           additionalInfo: {
-            buyerName: populatedOrder.buyer.name,
+            buyerName: populatedOrder.buyerId.name,
             itemCount: orderItems.length
           }
         },
@@ -112,7 +136,14 @@ const createOrder = async (req, res) => {
     res.status(201).json(populatedOrder);
   } catch (error) {
     console.error('Error creating order:', error);
-    res.status(500).json({ error: 'Failed to create order' });
+    console.error('Error stack:', error.stack);
+    if (error.errors) {
+      console.error('Validation errors:');
+      for (const field in error.errors) {
+        console.error(`  ${field}: ${error.errors[field].message}`);
+      }
+    }
+    res.status(500).json({ error: 'Failed to create order', details: error.message });
   }
 };
 
@@ -121,10 +152,10 @@ const getBuyerOrders = async (req, res) => {
   try {
     const buyerId = req.user.id;
     
-    const orders = await Order.find({ buyer: buyerId })
-      .populate('buyer', 'name email')
-      .populate('items.product', 'name price unit image')
-      .populate('items.farmer', 'name email')
+    const orders = await Order.find({ buyerId: buyerId })
+      .populate('buyerId', 'name email')
+      .populate('items.productId', 'name price unit image')
+      .populate('items.farmerId', 'name email')
       .sort({ createdAt: -1 });
 
     res.json(orders);
@@ -139,10 +170,10 @@ const getFarmerOrders = async (req, res) => {
   try {
     const farmerId = req.user.id;
     
-    const orders = await Order.find({ 'items.farmer': farmerId })
-      .populate('buyer', 'name email phone')
-      .populate('items.product', 'name price unit image')
-      .populate('items.farmer', 'name email')
+    const orders = await Order.find({ 'items.farmerId': farmerId })
+      .populate('buyerId', 'name email phone')
+      .populate('items.productId', 'name price unit image')
+      .populate('items.farmerId', 'name email')
       .sort({ createdAt: -1 });
 
     res.json(orders);

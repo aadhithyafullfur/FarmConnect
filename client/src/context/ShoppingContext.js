@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { AuthContext } from './AuthContext';
 import api from '../services/api';
 
@@ -21,11 +21,24 @@ export const ShoppingContextProvider = ({ children }) => {
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Load cart function with useCallback to prevent unnecessary re-renders
+  const loadCart = useCallback(async () => {
+    try {
+      if (user) {  // Only load cart if user is logged in
+        const response = await api.get('/cart');
+        setCart(response.data.items || []);
+      }
+    } catch (error) {
+      console.error('Error loading cart:', error);
+      setCart([]);
+    }
+  }, [user]);
+
   // Load cart and wishlist from localStorage on mount
   useEffect(() => {
     loadCart();
     loadWishlist();
-  }, [user]);
+  }, [loadCart]);
 
   // Save cart to localStorage whenever it changes
   useEffect(() => {
@@ -44,18 +57,6 @@ export const ShoppingContextProvider = ({ children }) => {
       window.dispatchEvent(new CustomEvent('wishlistUpdated', { detail: wishlist }));
     }
   }, [wishlist]);
-
-  const loadCart = async () => {
-    try {
-      if (user) {  // Only load cart if user is logged in
-        const response = await api.get('/cart');
-        setCart(response.data.items || []);
-      }
-    } catch (error) {
-      console.error('Error loading cart:', error);
-      setCart([]);
-    }
-  };
 
   const loadWishlist = () => {
     try {

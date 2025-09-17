@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
 import api from "../../services/api";
+import { showSuccess, showError } from "../../utils/notifications";
 
 function FarmerDashboard() {
   const { user } = useContext(AuthContext);
@@ -59,16 +60,44 @@ function FarmerDashboard() {
     fetchData();
   }, [fetchData]);
 
+  const [deletingProductId, setDeletingProductId] = useState(null);
+
   const handleDeleteProduct = async (productId) => {
-    if (window.confirm("Delete this product?")) {
-      try {
-        await api.delete(`/products/${productId}`);
-        fetchData();
-        alert("Product deleted!");
-      } catch (err) {
-        console.error("Error deleting product:", err);
-        alert("Failed to delete");
-      }
+    setDeletingProductId(productId);
+  };
+
+  const confirmDeleteProduct = async (productId) => {
+    try {
+      await api.delete(`/products/${productId}`);
+      fetchData();
+      showSuccess("Product deleted successfully!");
+      setDeletingProductId(null);
+    } catch (err) {
+      console.error("Error deleting product:", err);
+      showError("Failed to delete product");
+      setDeletingProductId(null);
+    }
+  };
+
+  const updateOrderStatus = async (orderId, newStatus) => {
+    try {
+      await api.patch(`/orders/${orderId}/status`, { status: newStatus });
+      
+      // Update local state
+      setOrders(orders.map(order => 
+        order._id === orderId ? { ...order, status: newStatus } : order
+      ));
+      
+      showSuccess(`Order status updated to ${newStatus}`);
+      
+      // Recalculate analytics
+      const updatedOrders = orders.map(order => 
+        order._id === orderId ? { ...order, status: newStatus } : order
+      );
+      calculateAnalytics(products, updatedOrders);
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      showError('Failed to update order status');
     }
   };
 
@@ -451,7 +480,7 @@ function FarmerDashboard() {
                       <div className="relative h-48 bg-gray-700/50 overflow-hidden">
                         {product.image ? (
                           <img 
-                            src={product.image.startsWith('http') ? product.image : `http://localhost:5000${product.image}`} 
+                            src={product.image.startsWith('http') ? product.image : `http://localhost:5002${product.image}`} 
                             alt={product.name}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                             onError={(e) => {
@@ -578,30 +607,124 @@ function FarmerDashboard() {
                     >
                       <div className="flex justify-between items-start mb-4">
                         <div>
-                          <h3 className="text-lg font-semibold text-green-300">Order #{order._id.slice(-6)}</h3>
-                          <p className="text-gray-400 text-sm">Customer: {order.buyer?.name || 'Unknown'}</p>
+                          <h3 className="text-lg font-semibold text-green-300">
+                            Order #{order.orderId || order._id.slice(-8).toUpperCase()}
+                          </h3>
+                          <p className="text-gray-400 text-sm">Customer: {order.buyerId?.name || 'Unknown'}</p>
+                          <p className="text-gray-500 text-xs">
+                            {new Date(order.createdAt).toLocaleDateString('en-IN', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
                         </div>
-                        <span
-                          className={`px-3 py-1 text-xs font-medium rounded-full ${
-                            order.status === "pending"
-                              ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
-                              : order.status === "completed"
-                              ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                              : "bg-red-500/20 text-red-400 border border-red-500/30"
-                          }`}
-                        >
-                          {order.status}
-                        </span>
+                        <div className="flex flex-col items-end space-y-2">
+                          <span
+                            className={`px-3 py-1 text-xs font-medium rounded-full ${
+                              order.status === "pending"
+                                ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
+                                : order.status === "confirmed"
+                                ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                                : order.status === "preparing"
+                                ? "bg-orange-500/20 text-orange-400 border border-orange-500/30"
+                                : order.status === "out_for_delivery"
+                                ? "bg-purple-500/20 text-purple-400 border border-purple-500/30"
+                                : order.status === "delivered"
+                                ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                                : order.status === "cancelled"
+                                ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                                : "bg-gray-500/20 text-gray-400 border border-gray-500/30"
+                            }`}
+                          >
+                            {order.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                          </span>
+                          
+                          {order.status === 'pending' && (
+                            <select
+                              onChange={(e) => updateOrderStatus(order._id, e.target.value)}
+                              className="text-xs bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white"
+                              defaultValue=""
+                            >
+                              <option value="" disabled>Update Status</option>
+                              <option value="confirmed">Confirm Order</option>
+                              <option value="preparing">Start Preparing</option>
+                              <option value="cancelled">Cancel Order</option>
+                            </select>
+                          )}
+                          
+                          {order.status === 'confirmed' && (
+                            <select
+                              onChange={(e) => updateOrderStatus(order._id, e.target.value)}
+                              className="text-xs bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white"
+                              defaultValue=""
+                            >
+                              <option value="" disabled>Update Status</option>
+                              <option value="preparing">Start Preparing</option>
+                              <option value="out_for_delivery">Ready for Delivery</option>
+                            </select>
+                          )}
+                          
+                          {order.status === 'preparing' && (
+                            <select
+                              onChange={(e) => updateOrderStatus(order._id, e.target.value)}
+                              className="text-xs bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white"
+                              defaultValue=""
+                            >
+                              <option value="" disabled>Update Status</option>
+                              <option value="out_for_delivery">Ready for Delivery</option>
+                              <option value="delivered">Mark as Delivered</option>
+                            </select>
+                          )}
+                        </div>
                       </div>
                       
-                      <div className="flex justify-between items-center">
+                      {/* Order Items */}
+                      {order.items && order.items.length > 0 && (
+                        <div className="mb-4">
+                          <h4 className="text-sm font-medium text-gray-300 mb-2">Items:</h4>
+                          <div className="space-y-1">
+                            {order.items.map((item, index) => (
+                              <div key={index} className="flex justify-between text-sm">
+                                <span className="text-gray-400">
+                                  {item.productName} x {item.quantity} {item.unit || 'kg'}
+                                </span>
+                                <span className="text-green-400">
+                                  ₹{(item.pricePerUnit * item.quantity).toFixed(2)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Delivery Info */}
+                      {order.deliveryInfo && (
+                        <div className="mb-4 p-3 bg-gray-700/30 rounded-lg">
+                          <h4 className="text-sm font-medium text-gray-300 mb-1">Delivery Address:</h4>
+                          <p className="text-sm text-gray-400">
+                            {order.deliveryInfo.address?.street || 'Address not provided'}
+                          </p>
+                          {order.deliveryInfo.instructions && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              <strong>Instructions:</strong> {order.deliveryInfo.instructions}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      
+                      <div className="flex justify-between items-center pt-3 border-t border-gray-700">
                         <div>
-                          <p className="text-gray-400 text-sm">Total Amount</p>
-                          <p className="text-2xl font-bold text-green-400">₹{order.totalAmount}</p>
+                          <p className="text-gray-400 text-sm">Payment Method</p>
+                          <p className="text-white text-sm capitalize">
+                            {order.paymentMethod?.replace(/_/g, ' ') || 'Not specified'}
+                          </p>
                         </div>
                         <div className="text-right">
-                          <p className="text-gray-400 text-sm">Date</p>
-                          <p className="text-gray-300">{new Date(order.createdAt).toLocaleDateString()}</p>
+                          <p className="text-gray-400 text-sm">Total Amount</p>
+                          <p className="text-2xl font-bold text-green-400">₹{order.totalAmount?.toFixed(2)}</p>
                         </div>
                       </div>
                     </div>

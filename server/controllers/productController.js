@@ -211,7 +211,7 @@ exports.getProducts = async (req, res) => {
 
 exports.getMyProducts = async (req, res) => {
   try {
-    const products = await Product.find({ farmerId: req.user._id })
+    const products = await Product.find({ farmerId: req.user.id })
       .sort({ createdAt: -1 });
     res.json(products);
   } catch (err) {

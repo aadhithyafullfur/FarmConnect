@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import { showSuccess, showError, showWarning } from '../../utils/notifications';
 
 function Cart() {
+  const navigate = useNavigate();
   const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [orderLoading, setOrderLoading] = useState(false);
@@ -19,10 +22,12 @@ function Cart() {
       const response = await api.get('/cart');
       console.log('Cart response:', response.data); // Debug log
       if (response.data && Array.isArray(response.data.items)) {
-        setCartItems(response.data.items);
+        // Filter out items with null productId to prevent errors
+        const validItems = response.data.items.filter(item => item.productId);
+        setCartItems(validItems);
       } else if (response.data && typeof response.data === 'object') {
         // Handle single item case
-        setCartItems([response.data]);
+        setCartItems([response.data].filter(item => item.productId));
       } else {
         setCartItems([]);
       }
@@ -48,24 +53,24 @@ function Cart() {
       } else {
         // Fallback to local update
         setCartItems(cartItems.map(item => 
-          item.productId._id === productId 
+          item.productId && item.productId._id === productId 
             ? { ...item, quantity: newQuantity }
             : item
         ));
       }
     } catch (error) {
       console.error('Error updating quantity:', error);
-      alert('Failed to update quantity');
+      showError('Failed to update quantity');
     }
   };
 
   const removeFromCart = async (productId) => {
     try {
       await api.delete(`/cart/remove/${productId}`);
-      setCartItems(cartItems.filter(item => item.productId._id !== productId));
+      setCartItems(cartItems.filter(item => item.productId && item.productId._id !== productId));
     } catch (error) {
       console.error('Error removing from cart:', error);
-      alert('Failed to remove item');
+      showError('Failed to remove item');
     }
   };
 
@@ -75,18 +80,18 @@ function Cart() {
       setCartItems([]);
     } catch (error) {
       console.error('Error clearing cart:', error);
-      alert('Failed to clear cart');
+      showError('Failed to clear cart');
     }
   };
 
   const placeOrder = async () => {
     if (!deliveryAddress.trim()) {
-      alert('Please enter delivery address');
+      showWarning('Please enter delivery address');
       return;
     }
 
     if (cartItems.length === 0) {
-      alert('Cart is empty');
+      showWarning('Cart is empty');
       return;
     }
 
@@ -94,7 +99,7 @@ function Cart() {
       setOrderLoading(true);
       
       const orderData = {
-        items: cartItems.map(item => ({
+        items: cartItems.filter(item => item.productId).map(item => ({
           product: item.productId._id,
           quantity: item.quantity,
           price: item.productId.price
@@ -105,43 +110,41 @@ function Cart() {
         totalAmount: getTotalAmount()
       };
 
+      console.log('=== SENDING ORDER DATA ===');
+      console.log('Order data:', JSON.stringify(orderData, null, 2));
+      console.log('Cart items:', cartItems);
+      console.log('==========================');
+
       const response = await api.post('/orders', orderData);
       await clearCart();
       
       // Show success modal with order details
       const orderDetails = response.data;
-      const farmers = [...new Set(cartItems.map(item => item.productId.farmerId?.name))];
       
-      const message = `
-        Order placed successfully! 🎉
-        Order ID: ${orderDetails._id}
-        Total Amount: ₹${orderDetails.totalAmount.toFixed(2)}
-        
-        Your order will be delivered to:
-        ${deliveryAddress}
-        
-        Farmers have been notified:
-        ${farmers.join(', ')}
-        
-        You will receive updates about your order status.
-      `;
-      
-      alert(message);
+      showSuccess(`Order placed successfully! Order ID: ${orderDetails._id}`);
       
       // Reset form
       setDeliveryAddress('');
       setSpecialInstructions('');
       
+      // Navigate to orders page after a short delay
+      setTimeout(() => {
+        navigate('/buyer/orders');
+      }, 2000);
+      
     } catch (error) {
       console.error('Error placing order:', error);
-      alert('Failed to place order. Please try again.');
+      showError('Failed to place order. Please try again.');
     } finally {
       setOrderLoading(false);
     }
   };
 
   const getTotalAmount = () => {
-    return cartItems.reduce((total, item) => total + (item.productId.price * item.quantity), 0);
+    return cartItems.reduce((total, item) => {
+      if (!item.productId) return total;
+      return total + (item.productId.price * item.quantity);
+    }, 0);
   };
 
   const getTotalItems = () => {
@@ -187,15 +190,22 @@ function Cart() {
       <div className="grid lg:grid-cols-3 gap-8">
         {/* Cart Items */}
         <div className="lg:col-span-2 space-y-4">
-          {cartItems.map((item) => (
-            <div key={item.productId._id} className="bg-gray-800/50 rounded-2xl p-6 border border-gray-700/50">
-              <div className="flex items-center gap-4">
-                {/* Product Image */}
-                <div className="relative">
-                  {item.productId.image ? (
-                    <img
-                      src={item.productId.image.startsWith('http') ? item.productId.image : `http://localhost:5003${item.productId.image}`}
-                      alt={item.productId.name}
+          {cartItems.map((item) => {
+            // Add null check for productId
+            if (!item.productId) {
+              console.warn('Cart item has null productId:', item);
+              return null;
+            }
+            
+            return (
+              <div key={item.productId._id} className="bg-gray-800/50 rounded-2xl p-6 border border-gray-700/50">
+                <div className="flex items-center gap-4">
+                  {/* Product Image */}
+                  <div className="relative">
+                    {item.productId.image ? (
+                      <img
+                        src={item.productId.image.startsWith('http') ? item.productId.image : `http://localhost:5001${item.productId.image}`}
+                        alt={item.productId.name}
                       className="w-24 h-24 object-cover rounded-xl"
                       onError={(e) => {
                         if (item.productId.cropType) {
@@ -306,7 +316,8 @@ function Cart() {
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Order Summary */}

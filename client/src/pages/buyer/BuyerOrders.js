@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
+import { showSuccess, showError } from '../../utils/notifications';
 
 function BuyerOrders() {
   const [orders, setOrders] = useState([]);
@@ -23,19 +24,20 @@ function BuyerOrders() {
     }
   };
 
-  const cancelOrder = async (orderId) => {
-    if (!window.confirm('Are you sure you want to cancel this order?')) {
-      return;
-    }
+  const [cancellingOrderId, setCancellingOrderId] = useState(null);
 
+  const cancelOrder = async (orderId) => {
     try {
       await api.patch(`/orders/${orderId}/cancel`);
       setOrders(orders.map(order => 
         order._id === orderId ? { ...order, status: 'cancelled' } : order
       ));
+      showSuccess('Order cancelled successfully');
+      setCancellingOrderId(null);
     } catch (error) {
       console.error('Error cancelling order:', error);
-      alert('Failed to cancel order');
+      showError('Failed to cancel order');
+      setCancellingOrderId(null);
     }
   };
 

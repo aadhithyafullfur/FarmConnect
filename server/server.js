@@ -137,12 +137,12 @@ global.connectedUsers = connectedUsers;
 // Auto-increment port logic
 let port = process.env.PORT ? parseInt(process.env.PORT) : 5000;
 function tryStart(p) {
-  server.listen(p, 'localhost')
+  server.listen(p, '127.0.0.1')  // Force IPv4 binding
     .on('listening', () => {
       const actualPort = server.address().port;
       console.log(`Server running on port 🚀 ${actualPort}`);
       console.log(`Server address:`, server.address());
-      console.log(`Health endpoint: http://localhost:${actualPort}/health`);
+      console.log(`Health endpoint: http://127.0.0.1:${actualPort}/health`);
     })
     .on('error', (err) => {
       if (err.code === 'EADDRINUSE') {

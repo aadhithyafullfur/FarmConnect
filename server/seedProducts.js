@@ -96,14 +96,18 @@ async function seedProducts() {
     await mongoose.connect(process.env.MONGODB_URI);
     console.log('Connected to MongoDB successfully');
 
-    // Find or create a sample farmer
-    let farmer = await User.findOne({ role: 'farmer' });
+    // Find or create a sample farmer - try both role and userType for compatibility
+    let farmer = await User.findOne({ $or: [{ role: 'farmer' }, { userType: 'farmer' }] });
     if (!farmer) {
+      const bcrypt = require('bcryptjs');
+      const hashedPassword = await bcrypt.hash('password123', 10);
       farmer = new User({
         name: 'Sample Farmer',
+        username: 'samplefarmer',
         email: 'farmer@example.com',
-        password: 'hashedpassword', // In real app, this would be properly hashed
+        password: hashedPassword,
         role: 'farmer',
+        userType: 'farmer', // Add both for compatibility
         phone: '+1234567890',
         farmName: 'Green Valley Farm',
         location: {
