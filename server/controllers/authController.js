@@ -115,6 +115,32 @@ exports.login = async (req, res) => {
   }
 };
 
+// VERIFY TOKEN
+exports.verifyToken = async (req, res) => {
+  try {
+    // Token is already verified by auth middleware
+    // Just return user data to confirm token is valid
+    const user = await User.findById(req.user.id).select('-password');
+    if (!user) {
+      return res.status(404).json({ msg: 'User not found' });
+    }
+    res.json({
+      valid: true,
+      user: { 
+        _id: user._id, 
+        name: user.name, 
+        email: user.email, 
+        role: user.role,
+        phone: user.phone,
+        address: user.address
+      }
+    });
+  } catch (err) {
+    console.error('Error in verifyToken controller:', err.message);
+    res.status(500).json({ msg: 'Server error', error: err.message });
+  }
+};
+
 // GET PROFILE
 exports.getProfile = async (req, res) => {
   try {

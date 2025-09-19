@@ -1,0 +1,19 @@
+{
+  "name": "farmconnect",
+  "version": "1.0.0",
+  "description": "FarmConnect - Professional Farm Management Platform",
+  "scripts": {
+    "start": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd server && node server.js",
+    "client": "cd client && npm start",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "install-all": "npm install && cd server && npm install && cd ../client && npm install",
+    "setup": "npm run install-all && npm start"
+  },
+  "keywords": ["farming", "marketplace", "react", "nodejs"],
+  "author": "FarmConnect Team",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

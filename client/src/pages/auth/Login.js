@@ -8,7 +8,9 @@ function Login() {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('buyer');
   const [error, setError] = useState('');
-  const { login, user } = useContext(AuthContext);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const { login, user, loading } = useContext(AuthContext);
   const navigate = useNavigate();
 
   // Redirect if already logged in
@@ -22,21 +24,48 @@ function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setIsLoading(true);
+    
     try {
       const response = await api.post('/auth/login', { email, password, role });
-      login(response.data);
-      if (response.data.user.role === 'buyer') navigate('/buyer');
-      else if (response.data.user.role === 'farmer') navigate('/farmer');
+      login(response.data, rememberMe);
+      
+      // Success message
+      console.log('✅ Login successful! Redirecting...');
+      
+      // Navigate based on role
+      if (response.data.user.role === 'buyer') {
+        navigate('/buyer', { replace: true });
+      } else if (response.data.user.role === 'farmer') {
+        navigate('/farmer', { replace: true });
+      }
     } catch (err) {
       if (err.code === 'ERR_NETWORK' || err.message.includes('ERR_CONNECTION_REFUSED')) {
         setError('Unable to connect to server. Please check if the server is running.');
       } else if (err.response?.status === 400) {
         setError(err.response.data.msg || 'Invalid credentials');
+      } else if (err.response?.status === 401) {
+        setError('Invalid email or password. Please try again.');
       } else {
         setError('Login failed. Please try again.');
       }
+      console.error('Login error:', err);
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  // Show loading spinner while auth is being initialized
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-green-500 mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative">
@@ -114,17 +143,55 @@ function Login() {
             </div>
           </div>
 
+          {/* Remember Me Checkbox */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <input
+                id="remember-me"
+                name="remember-me"
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-600 bg-gray-800 rounded transition-colors"
+              />
+              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-400">
+                Keep me signed in for 7 days
+              </label>
+            </div>
+            <div className="text-sm">
+              <button 
+                type="button"
+                onClick={() => alert('Password reset feature coming soon!')}
+                className="font-medium text-green-400 hover:text-green-300 transition-colors duration-200 underline bg-transparent border-none cursor-pointer"
+              >
+                Forgot password?
+              </button>
+            </div>
+          </div>
+
           <div>
             <button
               type="submit"
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-gray-900 bg-gradient-to-r from-green-400 to-green-500 hover:from-green-500 hover:to-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-400 transition-all duration-200 shadow-lg shadow-green-900/25 hover:shadow-green-900/40 transform hover:scale-[1.02]"
+              disabled={isLoading}
+              className={`group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-gray-900 transition-all duration-200 shadow-lg transform ${
+                isLoading 
+                  ? 'bg-gray-600 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-green-400 to-green-500 hover:from-green-500 hover:to-green-600 hover:scale-[1.02] shadow-green-900/25 hover:shadow-green-900/40 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-400'
+              }`}
             >
               <span className="absolute left-0 inset-y-0 flex items-center pl-3">
-                <svg className="h-5 w-5 text-gray-900 group-hover:text-gray-800" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                </svg>
+                {isLoading ? (
+                  <svg className="animate-spin h-5 w-5 text-gray-900" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : (
+                  <svg className="h-5 w-5 text-gray-900 group-hover:text-gray-800" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                  </svg>
+                )}
               </span>
-              Sign in
+              {isLoading ? 'Signing in...' : 'Sign in'}
             </button>
           </div>
 

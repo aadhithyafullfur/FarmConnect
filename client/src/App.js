@@ -2,6 +2,8 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import NotificationToast from './components/NotificationToast';
+import ServerStatus from './components/ServerStatus';
+import AutoServerService from './services/AutoServerService';
 
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
@@ -36,6 +38,17 @@ function App() {
   React.useEffect(() => {
     window.testApi = testApi;
     console.log('Test API function available as window.testApi()');
+    
+    // Initialize auto-server recovery service (but don't start it automatically)
+    const autoServer = new AutoServerService();
+    window.autoServerService = autoServer;
+    console.log('🔄 Auto-server recovery service available (call window.autoServerService.startAutoRecovery() to enable)');
+    
+    return () => {
+      if (autoServer.isMonitoring) {
+        autoServer.stopAutoRecovery();
+      }
+    };
   }, []);
 
   return (
@@ -43,6 +56,7 @@ function App() {
       <ShoppingContextProvider>
         <Router>
           <div className="min-h-screen bg-gray-900 text-gray-100">
+            <ServerStatus />
             <Navbar />
             <NotificationToast />
             <main>

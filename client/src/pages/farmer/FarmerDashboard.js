@@ -1274,7 +1274,7 @@ function FarmerDashboard() {
                       <div key={index} className="flex items-center space-x-3 p-3 bg-gray-600/30 rounded-lg">
                         {item.productImage && (
                           <img
-                            src={`http://localhost:5003${item.productImage}`}
+                            src={`http://localhost:5001${item.productImage}`}
                             alt={item.productName}
                             className="w-12 h-12 object-cover rounded-lg"
                           />

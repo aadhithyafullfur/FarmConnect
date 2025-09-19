@@ -1,0 +1,25 @@
+========================================
+          🚀 FarmConnect Startup
+========================================
+
+MANUAL STARTUP OPTIONS:
+
+🎯 EASIEST: Double-click "🚀-QUICK-START.bat"
+   → Starts both server & client instantly
+
+💻 COMMAND LINE: Open terminal and run "npm start"
+   → Runs both server & client together
+
+🖥️ SEPARATE TERMINALS:
+   Terminal 1: cd server && node server.js
+   Terminal 2: cd client && npm start
+
+🔧 VS CODE TASK:
+   Ctrl+Shift+P → "Tasks: Run Task" → "Start FarmConnect Server"
+
+📊 MONITORING: Double-click "AUTO-MONITOR.bat"
+   → Continuously monitors and restarts server if it crashes
+
+========================================
+         Choose your preferred method!
+========================================

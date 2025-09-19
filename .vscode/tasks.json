@@ -1,0 +1,85 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Start FarmConnect Server",
+            "type": "shell",
+            "command": "cmd",
+            "args": ["/c", "cd server && node server.js"],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "new",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "isBackground": true,
+            "runOptions": {
+                // Auto-start disabled - run manually via Ctrl+Shift+P > Tasks: Run Task
+            },
+            "problemMatcher": {
+                "pattern": {
+                    "regexp": "^([^\\s].*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3,
+                    "severity": 4,
+                    "message": 5
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "^.*Server running on port.*$",
+                    "endsPattern": "^.*MongoDB connected successfully.*$"
+                }
+            }
+        },
+        {
+            "label": "Start React Client",
+            "type": "shell",
+            "command": "npm",
+            "args": ["start"],
+            "options": {
+                "cwd": "${workspaceFolder}/client"
+            },
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "new",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "isBackground": true,
+            "problemMatcher": {
+                "pattern": {
+                    "regexp": "^([^\\s].*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3,
+                    "severity": 4,
+                    "message": 5
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "^.*webpack compiled.*$",
+                    "endsPattern": "^.*Local:.*http://localhost:3000.*$"
+                }
+            }
+        },
+        {
+            "label": "Start Full Application",
+            "dependsOrder": "parallel",
+            "dependsOn": [
+                "Start FarmConnect Server",
+                "Start React Client"
+            ],
+            "group": "build",
+            "runOptions": {
+                "runOn": "folderOpen"
+            }
+        }
+    ]
+}

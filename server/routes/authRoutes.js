@@ -2,6 +2,7 @@ const express = require('express');
 const { 
   register, 
   login, 
+  verifyToken,
   getProfile, 
   updateProfile, 
   changePassword, 
@@ -27,6 +28,7 @@ router.delete('/test-delete', (req, res) => {
 });
 
 // Protected routes
+router.get('/verify', authMiddleware, verifyToken);
 router.get('/profile', authMiddleware, getProfile);
 router.put('/profile', authMiddleware, updateProfile);
 router.put('/change-password', authMiddleware, changePassword);

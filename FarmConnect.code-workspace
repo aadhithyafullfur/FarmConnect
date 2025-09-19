@@ -1,0 +1,59 @@
+{
+    "folders": [
+        {
+            "name": "🚀 FarmConnect",
+            "path": "."
+        },
+        {
+            "name": "🖥️ Server",
+            "path": "./server"
+        },
+        {
+            "name": "⚛️ Client",
+            "path": "./client"
+        }
+    ],
+    "settings": {
+        "task.allowAutomaticTasks": "on",
+        "task.confirmBeforeTask": "never",
+        "task.autoDetect": "on",
+        "terminal.integrated.defaultProfile.windows": "Command Prompt",
+        "files.autoSave": "afterDelay",
+        "files.autoSaveDelay": 1000,
+        "workbench.startupEditor": "none",
+        "npm.enableScriptExplorer": false,
+        "extensions.ignoreRecommendations": false
+    },
+    "tasks": {
+        "version": "2.0.0",
+        "tasks": [
+            {
+                "label": "🚀 Auto-Start FarmConnect",
+                "type": "shell",
+                "command": "cmd",
+                "args": ["/c", "start /min cmd /k \"cd server && echo Starting FarmConnect Server... && node server.js\""],
+                "group": "build",
+                "presentation": {
+                    "echo": false,
+                    "reveal": "never",
+                    "focus": false,
+                    "panel": "shared",
+                    "showReuseMessage": false,
+                    "clear": false
+                },
+                "isBackground": true,
+                "runOptions": {
+                    // Auto-start disabled - run manually if needed
+                },
+                "problemMatcher": []
+            }
+        ]
+    },
+    "extensions": {
+        "recommendations": [
+            "ms-vscode.vscode-json",
+            "bradlc.vscode-tailwindcss",
+            "esbenp.prettier-vscode"
+        ]
+    }
+}
