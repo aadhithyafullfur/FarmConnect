@@ -1,7 +1,7 @@
 // Server Health Check Service
 class ServerHealthService {
   constructor() {
-    this.healthCheckUrl = 'http://localhost:5001/health';
+    this.healthCheckUrl = 'http://localhost:5003/health';
     this.isServerHealthy = false;
     this.retryAttempts = 0;
     this.maxRetries = 10;

@@ -204,7 +204,7 @@ function Cart() {
                   <div className="relative">
                     {item.productId.image ? (
                       <img
-                        src={item.productId.image.startsWith('http') ? item.productId.image : `http://localhost:5001${item.productId.image}`}
+                        src={item.productId.image.startsWith('http') ? item.productId.image : `http://localhost:5003${item.productId.image}`}
                         alt={item.productId.name}
                       className="w-24 h-24 object-cover rounded-xl"
                       onError={(e) => {

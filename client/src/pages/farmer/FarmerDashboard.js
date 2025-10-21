@@ -4,6 +4,8 @@ import { AuthContext } from "../../context/AuthContext";
 import api from "../../services/api";
 import { showSuccess, showError, showWarning } from "../../utils/notifications";
 import notificationService from "../../services/notificationService";
+import ChatInterface from "../../components/ChatInterface";
+import ChatStarter from "../../components/ChatStarter";
 
 function FarmerDashboard() {
   const { user } = useContext(AuthContext);
@@ -424,7 +426,7 @@ function FarmerDashboard() {
                         <div className="relative h-32 bg-gray-700/50 overflow-hidden">
                           {product.image ? (
                             <img 
-                              src={product.image.startsWith('http') ? product.image : `http://localhost:5001${product.image}`} 
+                              src={product.image.startsWith('http') ? product.image : `http://localhost:5003${product.image}`} 
                               alt={product.name}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                               onError={(e) => {
@@ -514,7 +516,7 @@ function FarmerDashboard() {
                       <div className="relative h-48 bg-gray-700/50 overflow-hidden">
                         {product.image ? (
                           <img 
-                            src={product.image.startsWith('http') ? product.image : `http://localhost:5001${product.image}`} 
+                            src={product.image.startsWith('http') ? product.image : `http://localhost:5003${product.image}`} 
                             alt={product.name}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                             onError={(e) => {
@@ -850,6 +852,21 @@ function FarmerDashboard() {
                                   <span>💬</span>
                                   <span>Send SMS</span>
                                 </button>
+                                
+                                {/* Real-time Chat Button */}
+                                {order.buyerId?._id && (
+                                  <ChatStarter
+                                    userId={order.buyerId._id}
+                                    userName={order.buyerId.name || 'Customer'}
+                                    buttonText={
+                                      <div className="flex items-center space-x-2">
+                                        <span>🗨️</span>
+                                        <span>Live Chat</span>
+                                      </div>
+                                    }
+                                    className="px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white rounded-xl text-sm font-medium transition-all duration-200 flex items-center space-x-2 shadow-lg hover:shadow-indigo-500/25"
+                                  />
+                                )}
                               </div>
                             </div>
                           </div>
@@ -1447,7 +1464,7 @@ function FarmerDashboard() {
                       <div key={index} className="flex items-center space-x-3 p-3 bg-gray-600/30 rounded-lg">
                         {item.productImage && (
                           <img
-                            src={`http://localhost:5001${item.productImage}`}
+                            src={`http://localhost:5003${item.productImage}`}
                             alt={item.productName}
                             className="w-12 h-12 object-cover rounded-lg"
                           />
@@ -1563,6 +1580,9 @@ function FarmerDashboard() {
           </div>
         </div>
       )}
+
+      {/* Floating Chat Interface */}
+      <ChatInterface />
     </div>
   );
 }

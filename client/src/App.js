@@ -13,6 +13,7 @@ import BuyerOrders from './pages/buyer/BuyerOrders';
 import FarmerDashboard from './pages/farmer/FarmerDashboard';
 import AddProduct from './pages/farmer/AddProductNew';
 import Profile from './pages/shared/Profile';
+import ChatTest from './pages/shared/ChatTest';
 import ProtectedRoute from './components/ProtectedRoute';
 import PublicRoute from './components/PublicRoute';
 
@@ -80,6 +81,7 @@ function App() {
                 
                 {/* Shared Routes */}
                 <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                <Route path="/chat" element={<ProtectedRoute><ChatTest /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </main>

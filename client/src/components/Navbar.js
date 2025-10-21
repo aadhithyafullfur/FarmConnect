@@ -335,6 +335,18 @@ function Navbar() {
                 <span>Contact</span>
               </span>
             </NavLink>
+
+            {/* Chat Link (for testing) */}
+            {user && (
+              <NavLink to="/chat">
+                <span className="flex items-center space-x-2">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
+                  </svg>
+                  <span>Chat</span>
+                </span>
+              </NavLink>
+            )}
             
             {/* Driver Portal now accessible through main login with driver role */}
 
@@ -442,6 +454,15 @@ function Navbar() {
               </div>
             ) : (
               <div className="flex items-center space-x-3">
+                {/* Chat */}
+                <Link to="/chat">
+                  <button className="relative p-2.5 text-slate-400 hover:text-blue-400 hover:bg-slate-800/60 rounded-xl transition-all duration-300 border border-transparent hover:border-slate-700/50 group">
+                    <svg className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                  </button>
+                </Link>
+
                 {/* Notifications */}
                 <div className="relative dropdown-container">
                   <button

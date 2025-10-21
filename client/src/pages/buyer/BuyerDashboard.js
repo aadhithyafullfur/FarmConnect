@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useShoppingContext } from '../../context/ShoppingContext';
 import api from '../../services/api';
 import Navbar from '../../components/Navbar';
+import ChatInterface from '../../components/ChatInterface';
+import ChatStarter from '../../components/ChatStarter';
 
 function BuyerDashboard() {
   const { cart, addToCart, wishlist, toggleWishlist } = useShoppingContext();
@@ -128,7 +130,7 @@ function BuyerDashboard() {
         <div className="relative h-56 bg-slate-700 overflow-hidden">
           {product.image ? (
             <img 
-              src={product.image.startsWith('http') ? product.image : `http://localhost:5001${product.image}`} 
+              src={product.image.startsWith('http') ? product.image : `http://localhost:5003${product.image}`} 
               alt={product.name}
               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
               onError={(e) => {
@@ -252,10 +254,18 @@ function BuyerDashboard() {
             <button
               onClick={() => window.open(`tel:${product.farmer?.phone || ''}`, '_blank')}
               className="px-4 py-3 bg-slate-700 text-slate-300 border border-slate-600 rounded-lg hover:bg-slate-600 hover:text-white transition-all"
-              title="Contact Farmer"
+              title="Call Farmer"
             >
               📞
             </button>
+            
+            {/* Chat Button */}
+            <ChatStarter
+              userId={product.farmer?._id}
+              userName={product.farmer?.name || 'Farmer'}
+              buttonText="💬"
+              className="px-4 py-3 bg-blue-600 text-white border border-blue-600 rounded-lg hover:bg-blue-700 hover:text-white transition-all"
+            />
           </div>
         </div>
       </div>
@@ -505,6 +515,9 @@ function BuyerDashboard() {
           </div>
         </div>
       )}
+
+      {/* Floating Chat Interface */}
+      <ChatInterface />
     </div>
   );
 }
