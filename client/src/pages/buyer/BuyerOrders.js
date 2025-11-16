@@ -27,6 +27,7 @@ function BuyerOrders() {
   const [cancellingOrderId, setCancellingOrderId] = useState(null);
 
   const cancelOrder = async (orderId) => {
+    setCancellingOrderId(orderId);
     try {
       await api.patch(`/orders/${orderId}/cancel`);
       setOrders(orders.map(order => 
@@ -169,7 +170,7 @@ function BuyerOrders() {
                       <div className="flex items-center gap-4">
                         {item.product?.image && (
                           <img
-                            src={`http://localhost:5000${item.product.image}`}
+                            src={`http://localhost:5001${item.product.image}`}
                             alt={item.product.name}
                             className="w-12 h-12 object-cover rounded-lg"
                           />
@@ -209,9 +210,10 @@ function BuyerOrders() {
                   {order.status === 'pending' && (
                     <button
                       onClick={() => cancelOrder(order._id)}
-                      className="px-6 py-2 bg-gradient-to-r from-red-500 to-red-400 text-white rounded-lg font-medium hover:from-red-400 hover:to-red-300 transition-all duration-200"
+                      disabled={cancellingOrderId === order._id}
+                      className="px-6 py-2 bg-gradient-to-r from-red-500 to-red-400 text-white rounded-lg font-medium hover:from-red-400 hover:to-red-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                     >
-                      Cancel Order
+                      {cancellingOrderId === order._id ? 'Cancelling...' : 'Cancel Order'}
                     </button>
                   )}
                   

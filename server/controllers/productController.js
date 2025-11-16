@@ -158,16 +158,25 @@ exports.updateProduct = async (req, res) => {
 
 exports.deleteProduct = async (req, res) => {
   try {
+    console.log('🗑️  DELETE PRODUCT CALLED');
+    console.log('Product ID:', req.params.id);
+    console.log('User ID:', req.user?._id);
+    
     const { id } = req.params;
     const product = await Product.findOne({ _id: id, farmerId: req.user._id });
+    
+    console.log('Found product:', product);
+    
     if (!product) {
+      console.log('❌ Product not found or unauthorized');
       return res.status(404).json({ error: 'Product not found or unauthorized' });
     }
 
     await Product.findByIdAndDelete(id);
+    console.log('✅ Product deleted successfully');
     res.json({ message: 'Product deleted successfully' });
   } catch (err) {
-    console.error(err);
+    console.error('❌ Error deleting product:', err);
     res.status(500).json({ error: 'Server error while deleting product' });
   }
 };

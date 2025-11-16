@@ -6,6 +6,7 @@ import { showSuccess, showError, showWarning } from "../../utils/notifications";
 import notificationService from "../../services/notificationService";
 import ChatInterface from "../../components/ChatInterface";
 import ChatStarter from "../../components/ChatStarter";
+import EditProductModal from "../../components/EditProductModal";
 
 function FarmerDashboard() {
   const { user } = useContext(AuthContext);
@@ -24,6 +25,11 @@ function FarmerDashboard() {
     recentProducts: []
   });
   const [loading, setLoading] = useState(true);
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [productToDelete, setProductToDelete] = useState(null);
+  const [deletingProduct, setDeletingProduct] = useState(false);
 
   // Navigation handler for tab switching
   const handleTabChange = (tabName) => {
@@ -135,6 +141,86 @@ function FarmerDashboard() {
   const closeOrderModal = () => {
     setSelectedOrder(null);
     setShowOrderModal(false);
+  };
+
+  // Handle product deletion
+  const handleDeleteProduct = (product) => {
+    setProductToDelete(product);
+    setShowDeleteModal(true);
+  };
+
+  // Confirm product deletion
+  const confirmDeleteProduct = async () => {
+    if (!productToDelete) return;
+    
+    try {
+      setDeletingProduct(true);
+      await api.delete(`/products/${productToDelete._id}`);
+      
+      // Update local state by removing the deleted product
+      setProducts(products.filter(p => p._id !== productToDelete._id));
+      
+      // Recalculate analytics
+      const updatedProducts = products.filter(p => p._id !== productToDelete._id);
+      calculateAnalytics(updatedProducts, orders);
+      
+      showSuccess(`Product "${productToDelete.name}" deleted successfully`);
+      setShowDeleteModal(false);
+      setProductToDelete(null);
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      showError('Failed to delete product. Please try again.');
+    } finally {
+      setDeletingProduct(false);
+    }
+  };
+
+  // Cancel product deletion
+  const cancelDeleteProduct = () => {
+    setShowDeleteModal(false);
+    setProductToDelete(null);
+    setDeletingProduct(false);
+  };
+
+  // Handle product editing
+  const handleEditProduct = (product) => {
+    setEditingProduct(product);
+    setShowEditModal(true);
+  };
+
+  // Close edit modal
+  const closeEditModal = () => {
+    setShowEditModal(false);
+    setEditingProduct(null);
+  };
+
+  // Save edited product
+  const saveEditedProduct = async (productId, formData) => {
+    try {
+      const response = await api.put(`/products/${productId}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      // Update local state
+      setProducts(products.map(p => 
+        p._id === productId ? response.data : p
+      ));
+      
+      // Recalculate analytics
+      const updatedProducts = products.map(p => 
+        p._id === productId ? response.data : p
+      );
+      calculateAnalytics(updatedProducts, orders);
+      
+      showSuccess(`Product updated successfully`);
+      closeEditModal();
+    } catch (error) {
+      console.error('Error updating product:', error);
+      showError('Failed to update product. Please try again.');
+      throw error; // Re-throw so the modal can handle the error state
+    }
   };
 
   if (loading) {
@@ -426,7 +512,7 @@ function FarmerDashboard() {
                         <div className="relative h-32 bg-gray-700/50 overflow-hidden">
                           {product.image ? (
                             <img 
-                              src={product.image.startsWith('http') ? product.image : `http://localhost:5003${product.image}`} 
+                              src={product.image.startsWith('http') ? product.image : `http://localhost:5001${product.image}`} 
                               alt={product.name}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                               onError={(e) => {
@@ -516,7 +602,7 @@ function FarmerDashboard() {
                       <div className="relative h-48 bg-gray-700/50 overflow-hidden">
                         {product.image ? (
                           <img 
-                            src={product.image.startsWith('http') ? product.image : `http://localhost:5003${product.image}`} 
+                            src={product.image.startsWith('http') ? product.image : `http://localhost:5001${product.image}`} 
                             alt={product.name}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                             onError={(e) => {
@@ -594,17 +680,17 @@ function FarmerDashboard() {
                       
                       <div className="flex justify-between items-center mt-6 pt-4 border-t border-gray-700/50">
                         <button
-                          onClick={() => showWarning("Delete feature coming soon")}
+                          onClick={() => handleDeleteProduct(product)}
                           className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-400/50 rounded-lg text-sm font-medium transition-all duration-200"
                         >
                           Delete
                         </button>
-                        <Link
-                          to={`/farmer/edit-product/${product._id}`}
+                        <button
+                          onClick={() => handleEditProduct(product)}
                           className="px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 hover:text-green-300 border border-green-500/30 hover:border-green-400/50 rounded-lg text-sm font-medium transition-all duration-200"
                         >
                           Edit
-                        </Link>
+                        </button>
                       </div>
                       </div>
                     </div>
@@ -1257,12 +1343,12 @@ function FarmerDashboard() {
                         >
                           {product.quantity < 10 ? 'Low Stock' : product.quantity < 50 ? 'Medium Stock' : 'Good Stock'}
                         </span>
-                        <Link
-                          to={`/farmer/edit-product/${product._id}`}
+                        <button
+                          onClick={() => handleEditProduct(product)}
                           className="px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 hover:text-green-300 border border-green-500/30 hover:border-green-400/50 rounded-lg text-sm font-medium transition-all duration-200"
                         >
                           Update
-                        </Link>
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -1464,7 +1550,7 @@ function FarmerDashboard() {
                       <div key={index} className="flex items-center space-x-3 p-3 bg-gray-600/30 rounded-lg">
                         {item.productImage && (
                           <img
-                            src={`http://localhost:5003${item.productImage}`}
+                            src={`http://localhost:5001${item.productImage}`}
                             alt={item.productName}
                             className="w-12 h-12 object-cover rounded-lg"
                           />
@@ -1576,6 +1662,157 @@ function FarmerDashboard() {
                   Ready for Delivery
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && productToDelete && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-2xl p-6 max-w-md w-full border border-gray-700/50 shadow-2xl">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-3xl text-red-400">🗑️</span>
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">Delete Product</h3>
+              <p className="text-gray-400 mb-4">
+                Are you sure you want to delete "<span className="text-green-400 font-semibold">{productToDelete.name}</span>"? 
+                This action cannot be undone.
+              </p>
+              <div className="flex gap-3 justify-center">
+                <button
+                  onClick={cancelDeleteProduct}
+                  disabled={deletingProduct}
+                  className="px-6 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-all duration-200 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDeleteProduct}
+                  disabled={deletingProduct}
+                  className="px-6 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg transition-all duration-200 disabled:opacity-50 flex items-center gap-2"
+                >
+                  {deletingProduct ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Deleting...
+                    </>
+                  ) : (
+                    'Delete Product'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Product Modal */}
+      {showEditModal && editingProduct && (
+        <EditProductModal
+          product={editingProduct}
+          onSave={saveEditedProduct}
+          onClose={closeEditModal}
+        />
+      )}
+
+      {/* Delete Product Confirmation Modal */}
+      {showDeleteModal && productToDelete && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full border border-red-500/30 transform transition-all">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-red-600 to-red-500 p-6 rounded-t-2xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">Delete Product</h3>
+                    <p className="text-red-100 text-sm">This action cannot be undone</p>
+                  </div>
+                </div>
+                <button
+                  onClick={cancelDeleteProduct}
+                  disabled={deletingProduct}
+                  className="text-white/80 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-all duration-200"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-4">
+              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+                <p className="text-gray-200 text-center">
+                  Are you sure you want to delete <span className="font-bold text-red-400">"{productToDelete.name}"</span>?
+                </p>
+                <p className="text-gray-400 text-sm text-center mt-2">
+                  This will permanently remove the product from your listings.
+                </p>
+              </div>
+
+              {/* Product Info */}
+              <div className="bg-gray-700/30 rounded-lg p-4 space-y-2">
+                <div className="flex items-center gap-3">
+                  {productToDelete.image ? (
+                    <img
+                      src={productToDelete.image.startsWith('http') ? productToDelete.image : `http://localhost:5001${productToDelete.image}`}
+                      alt={productToDelete.name}
+                      className="w-16 h-16 object-cover rounded-lg"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.parentElement.innerHTML = '<div class="w-16 h-16 flex items-center justify-center text-slate-400 bg-slate-700 rounded-lg"><span class="text-2xl">🌾</span></div>';
+                      }}
+                    />
+                  ) : (
+                    <div className="w-16 h-16 flex items-center justify-center text-slate-400 bg-slate-700 rounded-lg">
+                      <span className="text-2xl">🌾</span>
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <h4 className="text-white font-semibold">{productToDelete.name}</h4>
+                    <p className="text-gray-400 text-sm">₹{productToDelete.price}/{productToDelete.unit}</p>
+                    <p className="text-gray-500 text-xs">{productToDelete.category}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={cancelDeleteProduct}
+                  disabled={deletingProduct}
+                  className="flex-1 px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-xl font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDeleteProduct}
+                  disabled={deletingProduct}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white rounded-xl font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {deletingProduct ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      Delete Product
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
