@@ -50,8 +50,12 @@ app.use((req, res, next) => {
 // Make io instance available to routes
 app.set('io', io);
 
-// Health check endpoint
+// Health check endpoints (both with and without /api prefix)
 app.get('/health', (req, res) => {
+  res.json({ status: 'Server is running', port: server.address()?.port || 'unknown', timestamp: new Date().toISOString() });
+});
+
+app.get('/api/health', (req, res) => {
   res.json({ status: 'Server is running', port: server.address()?.port || 'unknown', timestamp: new Date().toISOString() });
 });
 

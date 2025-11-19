@@ -161,15 +161,31 @@ exports.deleteProduct = async (req, res) => {
     console.log('🗑️  DELETE PRODUCT CALLED');
     console.log('Product ID:', req.params.id);
     console.log('User ID:', req.user?._id);
+    console.log('User Role:', req.user?.role);
     
     const { id } = req.params;
-    const product = await Product.findOne({ _id: id, farmerId: req.user._id });
     
-    console.log('Found product:', product);
+    // Validate ObjectId format
+    const mongoose = require('mongoose');
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      console.log('❌ Invalid product ID format');
+      return res.status(400).json({ error: 'Invalid product ID format' });
+    }
+    
+    // Find product by ID first
+    const product = await Product.findById(id);
+    console.log('Found product:', product ? `${product.name} (ID: ${product._id})` : 'null');
+    console.log('Product farmer ID:', product?.farmerId);
     
     if (!product) {
-      console.log('❌ Product not found or unauthorized');
-      return res.status(404).json({ error: 'Product not found or unauthorized' });
+      console.log('❌ Product not found in database');
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    
+    // Check if user owns this product
+    if (product.farmerId.toString() !== req.user._id.toString()) {
+      console.log('❌ Unauthorized: Product belongs to different farmer');
+      return res.status(403).json({ error: 'Unauthorized to delete this product' });
     }
 
     await Product.findByIdAndDelete(id);
@@ -177,7 +193,8 @@ exports.deleteProduct = async (req, res) => {
     res.json({ message: 'Product deleted successfully' });
   } catch (err) {
     console.error('❌ Error deleting product:', err);
-    res.status(500).json({ error: 'Server error while deleting product' });
+    console.error('Error stack:', err.stack);
+    res.status(500).json({ error: 'Server error while deleting product', details: err.message });
   }
 };
 

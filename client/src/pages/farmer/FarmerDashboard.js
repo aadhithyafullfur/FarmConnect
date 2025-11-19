@@ -1343,12 +1343,20 @@ function FarmerDashboard() {
                         >
                           {product.quantity < 10 ? 'Low Stock' : product.quantity < 50 ? 'Medium Stock' : 'Good Stock'}
                         </span>
-                        <button
-                          onClick={() => handleEditProduct(product)}
-                          className="px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 hover:text-green-300 border border-green-500/30 hover:border-green-400/50 rounded-lg text-sm font-medium transition-all duration-200"
-                        >
-                          Update
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleDeleteProduct(product)}
+                            className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-400/50 rounded-lg text-sm font-medium transition-all duration-200"
+                          >
+                            Delete
+                          </button>
+                          <button
+                            onClick={() => handleEditProduct(product)}
+                            className="px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 hover:text-green-300 border border-green-500/30 hover:border-green-400/50 rounded-lg text-sm font-medium transition-all duration-200"
+                          >
+                            Update
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
