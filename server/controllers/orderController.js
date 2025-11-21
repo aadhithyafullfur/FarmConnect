@@ -17,14 +17,21 @@ const createOrder = async (req, res) => {
 
     // Validate required fields
     if (!items || items.length === 0) {
-      console.error('Validation failed: No items in order');
+      console.error('❌ Validation failed: No items in order');
       return res.status(400).json({ error: 'No items in order' });
     }
 
-    if (!deliveryAddress) {
-      console.error('Validation failed: Delivery address is required');
+    if (!deliveryAddress || !deliveryAddress.trim()) {
+      console.error('❌ Validation failed: Delivery address is required');
       return res.status(400).json({ error: 'Delivery address is required' });
     }
+
+    if (!paymentMethod) {
+      console.error('❌ Validation failed: Payment method is required');
+      return res.status(400).json({ error: 'Payment method is required' });
+    }
+
+    console.log(`✅ Validation passed. Processing ${items.length} items`);
 
     // Verify product availability and calculate total
     let calculatedTotal = 0;
@@ -135,14 +142,26 @@ const createOrder = async (req, res) => {
 
     res.status(201).json(populatedOrder);
   } catch (error) {
-    console.error('Error creating order:', error);
+    console.error('❌ Error creating order:', error.message);
     console.error('Error stack:', error.stack);
+    
+    // Log validation errors
     if (error.errors) {
-      console.error('Validation errors:');
+      console.error('Mongoose validation errors:');
       for (const field in error.errors) {
         console.error(`  ${field}: ${error.errors[field].message}`);
       }
     }
+    
+    // Return appropriate error response
+    if (error.errors) {
+      // Mongoose validation error
+      const validationErrors = Object.entries(error.errors)
+        .map(([field, err]) => `${field}: ${err.message}`)
+        .join('; ');
+      return res.status(400).json({ error: validationErrors });
+    }
+    
     res.status(500).json({ error: 'Failed to create order', details: error.message });
   }
 };

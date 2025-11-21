@@ -17,11 +17,6 @@ function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
   const [searchInput, setSearchInput] = useState('');
   const [cartCount, setCartCount] = useState(0);
   const [wishlistCount, setWishlistCount] = useState(0);
@@ -135,107 +130,17 @@ function Navbar() {
     navigate('/buyer/wishlist');
   };
 
-  useEffect(() => {
-    const loadNotifications = async () => {
-      if (!user) return;
-      
-      setIsLoadingNotifications(true);
-      try {
-        const data = await notificationService.getNotifications(1, 10);
-        setNotifications(data.notifications || []);
-      } catch (error) {
-        console.error('Error loading notifications:', error);
-      } finally {
-        setIsLoadingNotifications(false);
-      }
-    };
-
-    const loadUnreadCount = async () => {
-      if (!user) return;
-      
-      try {
-        const count = await notificationService.getUnreadCount();
-        setUnreadCount(count);
-      } catch (error) {
-        console.error('Error loading unread count:', error);
-      }
-    };
-
-    if (user) {
-      // Connect to notification service
-      notificationService.connect(user.id);
-      
-      // Request notification permission
-      notificationService.requestPermission();
-      
-      // Add listener for new notifications
-      notificationService.addListener('navbar', (notification) => {
-        setNotifications(prev => [notification, ...prev]);
-        setUnreadCount(prev => prev + 1);
-      });
-
-      // Load initial notifications
-      loadNotifications();
-      loadUnreadCount();
-    } else {
-      // Disconnect when user logs out
-      notificationService.disconnect();
-      setNotifications([]);
-      setUnreadCount(0);
-    }
-
-    return () => {
-      notificationService.removeListener('navbar');
-    };
-  }, [user]);
-
-  const handleNotificationClick = async (notification) => {
-    // Mark as read if unread
-    if (!notification.isRead) {
-      await notificationService.markAsRead(notification._id);
-      setNotifications(prev => 
-        prev.map(n => 
-          n._id === notification._id ? { ...n, isRead: true } : n
-        )
-      );
-      setUnreadCount(prev => Math.max(0, prev - 1));
-    }
-
-    // Navigate based on notification type
-    if (notification.data?.orderId) {
-      navigate(`/orders/${notification.data.orderId}`);
-    }
-    
-    setIsNotificationOpen(false);
-  };
-
-  const handleMarkAllAsRead = async () => {
-    try {
-      await notificationService.markAllAsRead();
-      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-      setUnreadCount(0);
-    } catch (error) {
-      console.error('Error marking all as read:', error);
-    }
-  };
-
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (!event.target.closest('.dropdown-container')) {
         setIsProfileOpen(false);
-        setIsNotificationOpen(false);
       }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  // Close mobile menu on route change
-  useEffect(() => {
-    setIsMenuOpen(false);
-  }, [location]);
 
   const isActiveLink = (path) => {
     return location.pathname === path;
@@ -463,105 +368,6 @@ function Navbar() {
                   </button>
                 </Link>
 
-                {/* Notifications */}
-                <div className="relative dropdown-container">
-                  <button
-                    onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                    className="relative p-2.5 text-slate-400 hover:text-emerald-400 hover:bg-slate-800/60 rounded-xl transition-all duration-300 border border-transparent hover:border-slate-700/50 group"
-                  >
-                    <svg className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                    </svg>
-                    {unreadCount > 0 && (
-                      <div className="absolute -top-1 -right-1 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold shadow-lg shadow-red-500/30 animate-pulse">
-                        {unreadCount}
-                      </div>
-                    )}
-                  </button>
-
-                  {/* Notifications Dropdown */}
-                  {isNotificationOpen && (
-                    <div className="absolute right-0 mt-3 w-80 rounded-2xl shadow-2xl bg-slate-800/95 backdrop-blur-xl border border-slate-700/50 overflow-hidden shadow-slate-900/50">
-                      <div className="px-5 py-4 border-b border-slate-700/50 bg-gradient-to-r from-slate-800/80 to-slate-700/80">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-sm font-semibold text-slate-200">
-                            Notifications
-                          </h3>
-                          <div className="flex items-center space-x-3">
-                            {unreadCount > 0 && (
-                              <span className="text-xs bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full font-medium border border-emerald-500/30">
-                                {unreadCount} new
-                              </span>
-                            )}
-                            {unreadCount > 0 && (
-                              <button
-                                onClick={handleMarkAllAsRead}
-                                className="text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors duration-200"
-                              >
-                                Mark all read
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="max-h-64 overflow-y-auto">
-                        {isLoadingNotifications ? (
-                          <div className="px-4 py-8 text-center">
-                            <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-green-400"></div>
-                            <p className="text-sm text-gray-400 mt-2">Loading notifications...</p>
-                          </div>
-                        ) : notifications.length === 0 ? (
-                          <div className="px-4 py-8 text-center">
-                            <svg className="w-8 h-8 text-gray-600 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                            </svg>
-                            <p className="text-sm text-gray-400">No notifications yet</p>
-                          </div>
-                        ) : (
-                          notifications.map((notification) => (
-                            <div
-                              key={notification._id}
-                              onClick={() => handleNotificationClick(notification)}
-                              className={`px-4 py-3 hover:bg-gray-700/30 border-b border-gray-700/30 last:border-b-0 cursor-pointer transition-colors ${
-                                !notification.isRead ? 'bg-green-500/5' : ''
-                              }`}
-                            >
-                              <div className="flex items-start space-x-3">
-                                <div className={`w-2 h-2 rounded-full mt-2 ${
-                                  !notification.isRead ? 'bg-green-400' : 'bg-gray-600'
-                                }`}></div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-gray-200">{notification.title}</p>
-                                  <p className="text-sm text-gray-300 truncate">{notification.message}</p>
-                                  <p className="text-xs text-gray-500">{notification.timeAgo || 'Just now'}</p>
-                                </div>
-                                {notification.priority === 'high' && (
-                                  <div className="flex-shrink-0">
-                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-red-500/20 text-red-400">
-                                      High
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                      <div className="px-4 py-3 border-t border-gray-700/50 bg-gray-800/50">
-                        <button 
-                          onClick={() => {
-                            navigate('/notifications');
-                            setIsNotificationOpen(false);
-                          }}
-                          className="text-xs text-green-400 hover:text-green-300 font-medium"
-                        >
-                          View all notifications
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
                 {/* User Profile */}
                 <div className="relative dropdown-container">
                   <button
@@ -656,135 +462,17 @@ function Navbar() {
             {/* Mobile Menu Button */}
             <div className="md:hidden">
               <button
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
                 className="p-2 text-gray-400 hover:text-green-400 hover:bg-gray-800/50 rounded-lg transition-all duration-200"
+                aria-label="Toggle menu"
               >
                 <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  {isMenuOpen ? (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                  ) : (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
-                  )}
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               </button>
             </div>
           </div>
         </div>
       </div>
-
-      {/* Mobile Menu */}
-      {isMenuOpen && (
-        <div className="md:hidden bg-gray-800/95 backdrop-blur-md border-t border-gray-700/50">
-          <div className="px-4 py-4 space-y-2">
-            <Link 
-              to="/" 
-              className={`block px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                isActiveLink('/') 
-                  ? 'text-green-400 bg-green-500/10' 
-                  : 'text-gray-300 hover:text-green-400 hover:bg-gray-700/50'
-              }`}
-            >
-              Home
-            </Link>
-            <button 
-              onClick={handleMarketplaceClick}
-              className="block w-full text-left px-3 py-2 text-sm font-medium rounded-lg transition-colors text-gray-300 hover:text-green-400 hover:bg-gray-700/50"
-            >
-              Marketplace
-            </button>
-            <Link 
-              to="/about" 
-              className={`block px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                isActiveLink('/about') 
-                  ? 'text-green-400 bg-green-500/10' 
-                  : 'text-gray-300 hover:text-green-400 hover:bg-gray-700/50'
-              }`}
-            >
-              About
-            </Link>
-            <Link 
-              to="/contact" 
-              className={`block px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                isActiveLink('/contact') 
-                  ? 'text-green-400 bg-green-500/10' 
-                  : 'text-gray-300 hover:text-green-400 hover:bg-gray-700/50'
-              }`}
-            >
-              Contact
-            </Link>
-            
-            {/* Driver Portal now accessible through main login with driver role */}
-
-            {/* Buyer Dashboard Specific Features - Mobile */}
-            {isBuyerDashboard() && (
-              <div className="pt-2 border-t border-gray-700/50 space-y-2">
-                <div className="px-3 py-2 text-xs font-semibold text-green-400 uppercase tracking-wider">
-                  Quick Actions
-                </div>
-                
-                <button 
-                  onClick={() => navigate('/buyer/cart')}
-                  className="flex items-center justify-between w-full px-3 py-2 text-sm font-medium rounded-lg transition-colors text-gray-300 hover:text-orange-400 hover:bg-gray-700/50"
-                >
-                  <div className="flex items-center space-x-2">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
-                    </svg>
-                    <span>Shopping Cart</span>
-                  </div>
-                  {cartCount > 0 && (
-                    <span className="bg-orange-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold animate-pulse">
-                      {cartCount}
-                    </span>
-                  )}
-                </button>
-
-                <button 
-                  onClick={handleWishlistClick}
-                  className="flex items-center justify-between w-full px-3 py-2 text-sm font-medium rounded-lg transition-colors text-gray-300 hover:text-pink-400 hover:bg-gray-700/50"
-                >
-                  <div className="flex items-center space-x-2">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
-                    </svg>
-                    <span>Wishlist</span>
-                  </div>
-                  {wishlistCount > 0 && (
-                    <span className="bg-pink-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold animate-pulse">
-                      {wishlistCount}
-                    </span>
-                  )}
-                </button>
-
-                <button 
-                  onClick={() => navigate('/buyer/orders')}
-                  className="flex items-center w-full px-3 py-2 text-sm font-medium rounded-lg transition-colors text-gray-300 hover:text-blue-400 hover:bg-gray-700/50"
-                >
-                  <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 2L3 7v11a2 2 0 002 2h10a2 2 0 002-2V7l-7-5zM8.5 9a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0z" clipRule="evenodd" />
-                  </svg>
-                  <span>My Orders</span>
-                </button>
-              </div>
-            )}
-            
-            {!user && (
-              <div className="pt-4 border-t border-gray-700/50 space-y-2">
-                <Link to="/login" className="block">
-                  <button className="w-full px-3 py-2 text-sm font-medium text-center rounded-lg border border-green-500/50 text-green-400 hover:bg-green-500/10">
-                    Sign In
-                  </button>
-                </Link>
-                <Link to="/register" className="block">
-                  <button className="w-full px-3 py-2 text-sm font-medium text-center rounded-lg bg-green-500 text-white hover:bg-green-600">
-                    Get Started
-                  </button>
-                </Link>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </nav>
   );
 }

@@ -1,18 +1,8 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { showError, showSuccess, showWarning } from '../../utils/notifications';
-
-/**
- * Refactored Cart component
- * - Defensive parsing for varied cart API shapes
- * - Optimistic UI updates for quantity / remove with rollback on failure
- * - Fixed image onError handling without manipulating DOM directly
- * - useMemo for totals
- * - isMounted ref to avoid setting state on unmounted component
- * - Accessibility improvements and confirmations for destructive actions
- * - Better loading / empty states
- */
+import Navbar from '../../components/Navbar';
 
 function Cart() {
   const navigate = useNavigate();
@@ -25,18 +15,8 @@ function Cart() {
   const [paymentMethod, setPaymentMethod] = useState('cod');
   const [specialInstructions, setSpecialInstructions] = useState('');
 
-  useEffect(() => {
-    isMounted.current = true;
-    fetchCart();
-    return () => {
-      isMounted.current = false;
-    };
-  }, []);
-
-  const normalizeCartItems = (raw) => {
-    // Accepts multiple shapes: { items: [...] } or { cart: { items: [...] } } or single item array/object
+  const normalizeCartItems = useCallback((raw) => {
     if (!raw) return [];
-
     const items = Array.isArray(raw.items)
       ? raw.items
       : Array.isArray(raw.cart?.items)
@@ -47,25 +27,22 @@ function Cart() {
       ? [raw]
       : [];
 
-    // filter out invalid items and ensure each item has required fields
     return items
       .filter((it) => it && (it.productId || it.product))
       .map((it) => {
         const product = it.productId || it.product;
         return {
-          // id for react key: prefer cart item id if present else product id
           id: it._id || it.id || product._id || product.id || `${product?.name || 'prod'}_${Math.random()}`,
           product,
           quantity: Number.isFinite(it.quantity) ? it.quantity : Number(it.qty) || 1,
         };
       });
-  };
+  }, []);
 
-  const fetchCart = async () => {
+  const fetchCart = useCallback(async () => {
     try {
       setLoading(true);
       const response = await api.get('/cart');
-      // defensive: response.data might be { items: [...] } or { cart: { items: [...] } }
       const raw = response?.data;
       if (!isMounted.current) return;
       const parsed = normalizeCartItems(raw);
@@ -77,9 +54,16 @@ function Cart() {
     } finally {
       if (isMounted.current) setLoading(false);
     }
-  };
+  }, [normalizeCartItems]);
 
-  // memoized totals
+  useEffect(() => {
+    isMounted.current = true;
+    fetchCart();
+    return () => {
+      isMounted.current = false;
+    };
+  }, [fetchCart]);
+
   const totals = useMemo(() => {
     const subtotal = cartItems.reduce((acc, it) => {
       const price = Number(it.product?.price) || 0;
@@ -87,42 +71,33 @@ function Cart() {
       return acc + price * qty;
     }, 0);
     const itemsCount = cartItems.reduce((acc, it) => acc + (Number(it.quantity) || 0), 0);
-    const deliveryFee = itemsCount > 0 ? 50 : 0;
+    const deliveryFee = 0;
     const platformFee = itemsCount > 0 ? 20 : 0;
     const total = subtotal + deliveryFee + platformFee;
     return { subtotal, itemsCount, deliveryFee, platformFee, total };
   }, [cartItems]);
 
-  // Helper to build image src safely
   const buildImageSrc = (img) => {
     if (!img) return null;
     try {
-      // if it's already absolute URL, return it
       const url = new URL(img, window.location.origin);
       return url.href;
     } catch (e) {
-      // fallback: try to prefix with API host if it's a path
       return `${process.env.REACT_APP_API_BASE || 'http://localhost:5001'}${img}`;
     }
   };
 
-  // Optimistic update for quantity with rollback
   const updateQuantity = async (cartItemId, newQuantity) => {
     if (newQuantity < 1) {
-      // remove the item
       return removeFromCart(cartItemId);
     }
 
     const prevItems = [...cartItems];
-    const idx = cartItems.findIndex((it) => it.id === cartItemId);
-    if (idx === -1) return;
-
     const updated = prevItems.map((it) => (it.id === cartItemId ? { ...it, quantity: newQuantity } : it));
     setCartItems(updated);
 
     try {
       const response = await api.put(`/cart/update/${cartItemId}`, { quantity: newQuantity });
-      // if server returned canonical cart, reconcile
       const data = response?.data;
       if (data) {
         const parsed = normalizeCartItems(data.items ? data : data.cart ? data.cart : data);
@@ -131,7 +106,6 @@ function Cart() {
     } catch (error) {
       console.error('Error updating quantity:', error);
       showError('Could not update quantity. Reverting.');
-      // rollback
       setCartItems(prevItems);
     }
   };
@@ -142,7 +116,6 @@ function Cart() {
 
     try {
       const response = await api.delete(`/cart/remove/${cartItemId}`);
-      // if server returned updated cart, use it
       const data = response?.data;
       if (data) {
         const parsed = normalizeCartItems(data.items ? data : data.cart ? data.cart : data);
@@ -190,22 +163,39 @@ function Cart() {
     try {
       setOrderLoading(true);
 
+      const validItems = cartItems.every(it => {
+        const productId = it.product?._id || it.product?.id || it.productId;
+        const price = it.product?.price || it.price;
+        const quantity = it.quantity;
+        return productId && price && quantity > 0;
+      });
+
+      if (!validItems) {
+        showError('Invalid cart data. Please refresh and try again.');
+        setOrderLoading(false);
+        return;
+      }
+
       const orderData = {
-        items: cartItems.map((it) => ({ product: it.product._id || it.product.id, quantity: it.quantity, price: it.product.price })),
+        items: cartItems.map((it) => ({
+          product: it.product?._id || it.product?.id || it.productId,
+          quantity: it.quantity,
+          price: it.product?.price || it.price
+        })),
         deliveryAddress,
-        paymentMethod,
+        paymentMethod: paymentMethod || 'cod',
         specialInstructions,
         totalAmount: totals.total,
       };
 
+      console.log('Placing order with data:', JSON.stringify(orderData, null, 2));
       const response = await api.post('/orders', orderData);
       const orderDetails = response?.data;
 
-      // Clear cart locally and attempt to clear server cart as well
       try {
         await api.delete('/cart/clear');
       } catch (e) {
-        // ignore - will fetch again
+        // ignore
       }
 
       showSuccess(`Order placed successfully! Order ID: ${orderDetails?._id || orderDetails?.id || ''}`);
@@ -215,11 +205,12 @@ function Cart() {
       setPaymentMethod('cod');
       setCartItems([]);
 
-      // navigate to orders page
       navigate('/buyer/orders');
     } catch (error) {
       console.error('Error placing order:', error);
-      showError('Failed to place order. Please try again.');
+      console.error('Error response:', error.response?.data);
+      const errorMsg = error.response?.data?.error || error.message || 'Failed to place order. Please try again.';
+      showError(errorMsg);
     } finally {
       setOrderLoading(false);
     }
@@ -227,10 +218,18 @@ function Cart() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-400 mx-auto" aria-hidden="true"></div>
-          <p className="text-gray-400 mt-4">Loading cart...</p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+        <Navbar />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 mt-16 flex items-center justify-center min-h-[50vh]">
+          <div className="text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-800 rounded-full mb-4">
+              <svg className="w-8 h-8 text-emerald-400 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </div>
+            <p className="text-slate-400">Loading your cart...</p>
+          </div>
         </div>
       </div>
     );
@@ -238,191 +237,219 @@ function Cart() {
 
   if (cartItems.length === 0) {
     return (
-      <div className="text-center py-12">
-        <div className="text-6xl mb-4">🛒</div>
-        <h3 className="text-xl font-semibold text-gray-300 mb-2">Your cart is empty</h3>
-        <p className="text-gray-400 mb-6">Add some fresh products to get started</p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+        <Navbar />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 mt-16 flex items-center justify-center min-h-[50vh]">
+          <div className="text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-800 rounded-full mb-4">
+              <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-semibold text-slate-200 mb-2">Your cart is empty</h3>
+            <p className="text-slate-400 mb-6">Add some fresh products to get started</p>
+            <button
+              onClick={() => navigate('/buyer')}
+              className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white rounded-xl font-semibold transition-all"
+            >
+              Continue Shopping
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold bg-gradient-to-r from-green-400 to-green-200 bg-clip-text text-transparent">
-          Shopping Cart ({totals.itemsCount} items)
-        </h2>
-        <button
-          onClick={clearCart}
-          className="px-4 py-2 text-red-400 hover:text-red-300 border border-red-400/30 rounded-lg hover:bg-red-900/20 transition-all duration-200"
-          aria-label="Clear cart"
-        >
-          Clear All
-        </button>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+      <Navbar />
 
-      <div className="grid lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-4">
-          {cartItems.map((item) => {
-            const product = item.product;
-            const imgSrc = buildImageSrc(product?.image);
-
-            return (
-              <div key={item.id} className="bg-gray-800/50 rounded-2xl p-6 border border-gray-700/50 flex items-start gap-4">
-                <div className="w-28 flex-shrink-0">
-                  {imgSrc ? (
-                    <img
-                      src={imgSrc}
-                      alt={product?.name || 'product'}
-                      className="w-24 h-24 object-cover rounded-xl"
-                      onError={(e) => (e.currentTarget.style.display = 'none')}
-                    />
-                  ) : product?.cropType ? (
-                    <img
-                      src={`/crops/${product.cropType}.jpg`}
-                      alt={product?.name}
-                      className="w-24 h-24 object-cover rounded-xl"
-                      onError={(e) => (e.currentTarget.style.display = 'none')}
-                    />
-                  ) : (
-                    <div className="w-24 h-24 flex items-center justify-center text-slate-400 bg-slate-800 rounded-xl">
-                      <span className="text-4xl">🌾</span>
-                    </div>
-                  )}
-
-                  {product?.isFeatured && (
-                    <span className="inline-block mt-2 px-2 py-1 bg-yellow-500 text-xs text-white rounded-full">Featured</span>
-                  )}
-                </div>
-
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-green-400">{product?.name}</h3>
-                  <p className="text-gray-400 text-sm mt-1 truncate" title={product?.description}>{product?.description}</p>
-
-                  <div className="flex items-center gap-3 mt-2">
-                    <div className="w-8 h-8 bg-green-900/30 rounded-full flex items-center justify-center text-green-400">👨‍🌾</div>
-                    <div>
-                      <div className="text-sm font-medium text-green-400">{product?.farmerId?.name || 'Local Farmer'}</div>
-                      <div className="text-xs text-gray-400">{product?.farmerId?.location?.city}, {product?.farmerId?.location?.state}</div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center flex-wrap gap-2 mt-3">
-                    <span className="text-green-400 font-semibold">₹{Number(product?.price || 0).toFixed(2)} per {product?.unit}</span>
-                    <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded-full text-xs">{product?.category}</span>
-                    {product?.organicCertified && <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded-full text-xs">🌿 Organic</span>}
-                    {product?.inSeason && <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-xs">🌞 In Season</span>}
-                  </div>
-                </div>
-
-                <div className="flex flex-col items-end gap-3">
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => updateQuantity(item.id, Number(item.quantity) - 1)}
-                      className="w-8 h-8 rounded-full bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors duration-200 flex items-center justify-center"
-                      aria-label={`Decrease quantity of ${product?.name}`}
-                    >
-                      -
-                    </button>
-                    <span className="w-12 text-center font-medium text-gray-200">{item.quantity}</span>
-                    <button
-                      onClick={() => updateQuantity(item.id, Number(item.quantity) + 1)}
-                      className="w-8 h-8 rounded-full bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors duration-200 flex items-center justify-center"
-                      aria-label={`Increase quantity of ${product?.name}`}
-                    >
-                      +
-                    </button>
-                  </div>
-
-                  <div className="text-right">
-                    <div className="text-lg font-bold text-green-400">₹{(Number(product?.price || 0) * Number(item.quantity)).toFixed(2)}</div>
-                    <button
-                      onClick={() => removeFromCart(item.id)}
-                      className="text-red-400 hover:text-red-300 text-sm mt-1 transition-colors duration-200"
-                      aria-label={`Remove ${product?.name} from cart`}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 mt-16">
+        {/* Header */}
+        <div className="mb-10 flex items-center justify-between bg-gradient-to-r from-slate-800/40 to-slate-900/40 p-6 rounded-2xl border border-slate-700/50">
+          <div>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-emerald-400 to-emerald-300 bg-clip-text text-transparent">Your Shopping Cart</h1>
+            <p className="text-slate-400 mt-2 text-base">You have <span className="text-emerald-400 font-semibold">{totals.itemsCount} item{totals.itemsCount !== 1 ? 's' : ''}</span> ready to order</p>
+          </div>
+          <button
+            onClick={clearCart}
+            className="px-6 py-3 text-red-400 hover:text-red-300 border border-red-500/40 hover:bg-red-500/15 rounded-xl transition-all font-semibold text-sm hover:shadow-lg hover:shadow-red-500/20"
+            aria-label="Clear cart"
+          >
+            Clear All
+          </button>
         </div>
 
-        <div className="lg:col-span-1">
-          <div className="bg-gray-800/50 rounded-2xl p-6 border border-gray-700/50 sticky top-4">
-            <h3 className="text-xl font-semibold text-gray-200 mb-6">Order Summary</h3>
+        {/* Main Grid */}
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Cart Items */}
+          <div className="lg:col-span-2 space-y-4">
+            {cartItems.map((item) => {
+              const product = item.product;
+              const imgSrc = buildImageSrc(product?.image);
 
-            <div className="space-y-3 mb-6">
-              <div className="flex justify-between text-gray-400">
-                <span>Subtotal ({totals.itemsCount} items)</span>
-                <span>₹{totals.subtotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-gray-400">
-                <span>Delivery Fee</span>
-                <span>₹{totals.deliveryFee.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-gray-400">
-                <span>Platform Fee</span>
-                <span>₹{totals.platformFee.toFixed(2)}</span>
-              </div>
+              return (
+                <div key={item.id} className="bg-gradient-to-br from-slate-800 to-slate-850 rounded-xl border border-slate-700/60 hover:border-emerald-500/60 transition-all duration-300 p-6 flex flex-col sm:flex-row items-start sm:items-center gap-6 shadow-lg hover:shadow-emerald-500/10">
+                  {/* Product Image */}
+                  <div className="w-32 flex-shrink-0">
+                    {imgSrc ? (
+                      <img
+                        src={imgSrc}
+                        alt={product?.name || 'product'}
+                        className="w-32 h-32 object-cover rounded-xl border border-slate-600 shadow-lg"
+                        onError={(e) => (e.currentTarget.style.display = 'none')}
+                      />
+                    ) : product?.cropType ? (
+                      <img
+                        src={`/crops/${product.cropType}.jpg`}
+                        alt={product?.name}
+                        className="w-32 h-32 object-cover rounded-xl border border-slate-600 shadow-lg"
+                        onError={(e) => (e.currentTarget.style.display = 'none')}
+                      />
+                    ) : (
+                      <div className="w-32 h-32 flex items-center justify-center text-slate-600 bg-slate-700 rounded-xl border border-slate-600 shadow-lg">
+                        <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
 
-              <div className="border-t border-gray-700 pt-3">
-                <div className="flex justify-between text-lg font-bold text-green-400">
-                  <span>Total</span>
-                  <span>₹{totals.total.toFixed(2)}</span>
+                  {/* Product Info */}
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-white mb-1">{product?.name}</h3>
+                    <p className="text-slate-400 text-sm mb-3 line-clamp-2">{product?.description}</p>
+
+                    <div className="flex items-center gap-3 mb-4 flex-wrap">
+                      <div className="flex items-center gap-2 bg-slate-700/40 px-3 py-1.5 rounded-lg">
+                        <svg className="w-4 h-4 text-emerald-400" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5.951-1.429 5.951 1.429a1 1 0 001.169-1.409l-7-14z" />
+                        </svg>
+                        <span className="text-sm text-slate-300 font-medium">{product?.farmerId?.name || 'Local Farmer'}</span>
+                      </div>
+                      {product?.organicCertified && (
+                        <span className="px-3 py-1.5 bg-green-500/25 text-green-300 rounded-lg text-xs border border-green-500/40 font-semibold">✓ Organic</span>
+                      )}
+                      <span className="px-3 py-1.5 bg-slate-700/40 text-slate-300 rounded-lg text-xs font-medium">{product?.category}</span>
+                    </div>
+
+                    <div className="text-emerald-400 font-bold text-lg">₹{Number(product?.price || 0).toFixed(0)}/{product?.unit}</div>
+                  </div>
+
+                  {/* Quantity & Actions */}
+                  <div className="flex flex-col items-end gap-4 w-full sm:w-auto">
+                    {/* Quantity Controls */}
+                    <div className="flex items-center gap-1 bg-slate-700/60 rounded-xl p-2 border border-slate-600/50">
+                      <button
+                        onClick={() => updateQuantity(item.id, Number(item.quantity) - 1)}
+                        className="w-9 h-9 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 hover:text-emerald-200 transition-all duration-200 flex items-center justify-center font-bold"
+                        aria-label={`Decrease quantity of ${product?.name}`}
+                      >
+                        −
+                      </button>
+                      <span className="w-12 text-center font-bold text-white text-lg">{item.quantity}</span>
+                      <button
+                        onClick={() => updateQuantity(item.id, Number(item.quantity) + 1)}
+                        className="w-9 h-9 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 hover:text-emerald-200 transition-all duration-200 flex items-center justify-center font-bold"
+                        aria-label={`Increase quantity of ${product?.name}`}
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    {/* Price & Remove */}
+                    <div className="text-right">
+                      <div className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-emerald-300 bg-clip-text text-transparent">₹{(Number(product?.price || 0) * Number(item.quantity)).toFixed(0)}</div>
+                      <button
+                        onClick={() => removeFromCart(item.id)}
+                        className="text-red-400 hover:text-red-300 text-xs mt-2 transition-colors font-medium hover:underline"
+                        aria-label={`Remove ${product?.name} from cart`}
+                      >
+                        Remove Item
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Order Summary Sidebar */}
+          <div className="lg:col-span-1">
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/60 rounded-2xl p-7 sticky top-24 shadow-2xl shadow-slate-900/50">
+              <h3 className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-emerald-300 bg-clip-text text-transparent mb-7">Order Summary</h3>
+
+              {/* Price Breakdown */}
+              <div className="space-y-3 mb-7 pb-7 border-b border-slate-700/50">
+                <div className="flex justify-between items-center text-slate-400">
+                  <span className="text-sm">Subtotal</span>
+                  <span className="text-white font-semibold">₹{totals.subtotal.toFixed(0)}</span>
+                </div>
+                <div className="flex justify-between items-center text-slate-400">
+                  <span className="text-sm">Delivery Fee</span>
+                  <span className="text-green-400 font-semibold text-sm">Free ✓</span>
+                </div>
+                <div className="flex justify-between items-center text-slate-400">
+                  <span className="text-sm">Platform Fee</span>
+                  <span className="text-white font-semibold">₹{totals.platformFee.toFixed(0)}</span>
+                </div>
+
+                <div className="flex justify-between items-center text-lg mt-4 pt-3 border-t border-slate-700/30">
+                  <span className="font-bold text-white">Total Amount</span>
+                  <span className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-emerald-300 bg-clip-text text-transparent">₹{totals.total.toFixed(0)}</span>
                 </div>
               </div>
-            </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Delivery Address *</label>
+              {/* Delivery Address */}
+              <div className="mb-5">
+                <label className="block text-sm font-bold text-white mb-2.5">Delivery Address <span className="text-red-400">*</span></label>
                 <textarea
                   value={deliveryAddress}
                   onChange={(e) => setDeliveryAddress(e.target.value)}
                   rows={3}
-                  className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-200"
+                  className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/60 rounded-xl text-white placeholder-slate-500 focus:border-emerald-500/80 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all text-sm font-medium resize-none"
                   placeholder="Enter your complete delivery address..."
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Payment Method</label>
+              {/* Payment Method */}
+              <div className="mb-5">
+                <label className="block text-sm font-bold text-white mb-2.5">Payment Method</label>
                 <select
                   value={paymentMethod}
                   onChange={(e) => setPaymentMethod(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-200"
+                  className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/60 rounded-xl text-white focus:border-emerald-500/80 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all text-sm font-medium"
                 >
-                  <option value="cod">Cash on Delivery</option>
-                  <option value="online">Online Payment</option>
-                  <option value="upi">UPI Payment</option>
+                  <option value="cod">💵 Cash on Delivery</option>
+                  <option value="online">💳 Online Payment</option>
+                  <option value="upi">📱 UPI Payment</option>
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Special Instructions</label>
+              {/* Special Instructions */}
+              <div className="mb-7">
+                <label className="block text-sm font-bold text-white mb-2.5">Special Instructions <span className="text-slate-500 font-normal text-xs">(Optional)</span></label>
                 <textarea
                   value={specialInstructions}
                   onChange={(e) => setSpecialInstructions(e.target.value)}
                   rows={2}
-                  className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-200"
+                  className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/60 rounded-xl text-white placeholder-slate-500 focus:border-emerald-500/80 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all text-sm font-medium resize-none"
                   placeholder="Any special instructions for delivery..."
                 />
               </div>
 
+              {/* Place Order Button */}
               <button
                 onClick={placeOrder}
                 disabled={orderLoading || !deliveryAddress.trim()}
-                className="w-full py-3 bg-gradient-to-r from-green-500 to-green-400 text-white rounded-xl font-medium hover:from-green-400 hover:to-green-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-green-500/20"
+                className="w-full py-4 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 disabled:from-slate-700 disabled:to-slate-700 disabled:cursor-not-allowed text-white rounded-xl font-bold text-lg transition-all duration-300 shadow-xl shadow-emerald-600/40 hover:shadow-emerald-600/60 disabled:shadow-none"
                 aria-disabled={orderLoading || !deliveryAddress.trim()}
               >
-                {orderLoading ? 'Placing Order...' : 'Place Order'}
+                {orderLoading ? 'Placing Order...' : 'Confirm Order'}
               </button>
 
-              <div className="text-center">
-                <p className="text-xs text-gray-500">By placing an order, you agree to our terms and conditions</p>
+              <div className="text-center mt-5">
+                <p className="text-xs text-slate-500 leading-relaxed">By placing an order, you agree to our <span className="text-emerald-400 cursor-pointer hover:underline">terms and conditions</span></p>
               </div>
             </div>
           </div>

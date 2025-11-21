@@ -14,7 +14,13 @@ module.exports = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     console.log('✅ Token verified successfully for user:', decoded.id);
-    req.user = decoded;
+    // Normalize user object: JWT has 'id', but we use '_id' in controllers
+    req.user = {
+      _id: decoded.id,
+      id: decoded.id,
+      ...decoded
+    };
+    console.log('👤 User object set:', { _id: req.user._id, id: req.user.id });
     next();
   } catch (err) {
     console.log('❌ Auth failed: Invalid token -', err.message);

@@ -163,6 +163,12 @@ exports.deleteProduct = async (req, res) => {
     console.log('User ID:', req.user?._id);
     console.log('User Role:', req.user?.role);
     
+    // Validate authentication
+    if (!req.user) {
+      console.log('❌ Unauthorized: No user found in request');
+      return res.status(401).json({ error: 'Unauthorized: Authentication required' });
+    }
+
     const { id } = req.params;
     
     // Validate ObjectId format
@@ -185,6 +191,7 @@ exports.deleteProduct = async (req, res) => {
     // Check if user owns this product
     if (product.farmerId.toString() !== req.user._id.toString()) {
       console.log('❌ Unauthorized: Product belongs to different farmer');
+      console.log(`Product owner: ${product.farmerId.toString()}, Current user: ${req.user._id.toString()}`);
       return res.status(403).json({ error: 'Unauthorized to delete this product' });
     }
 

@@ -26,13 +26,13 @@ function BuyerDashboard() {
 
   // Categories
   const categories = [
-    { id: 'all', name: 'All Products', icon: '🌾' },
-    { id: 'vegetable', name: 'Vegetables', icon: '🥬' },
-    { id: 'fruit', name: 'Fruits', icon: '🍎' },
-    { id: 'grain', name: 'Grains', icon: '🌽' },
-    { id: 'dairy', name: 'Dairy', icon: '🥛' },
-    { id: 'herbs', name: 'Herbs', icon: '🌿' },
-    { id: 'nuts', name: 'Nuts', icon: '🌰' }
+    { id: 'all', name: 'All Products' },
+    { id: 'vegetable', name: 'Vegetables' },
+    { id: 'fruit', name: 'Fruits' },
+    { id: 'grain', name: 'Grains' },
+    { id: 'dairy', name: 'Dairy' },
+    { id: 'herbs', name: 'Herbs' },
+    { id: 'nuts', name: 'Nuts' }
   ];
 
   // Debounce search term
@@ -242,145 +242,135 @@ function BuyerDashboard() {
 
     return (
       <div 
-        className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-xl border border-slate-700/50 hover:shadow-2xl hover:shadow-emerald-500/10 hover:border-emerald-500/50 transition-all duration-300 overflow-hidden group transform hover:-translate-y-2"
+        className="bg-slate-800 rounded-lg border border-slate-700 shadow-md overflow-hidden group flex flex-col h-full"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        {/* Product Image */}
-        <div className="relative h-64 bg-gradient-to-br from-slate-700 to-slate-800 overflow-hidden">
+        {/* Product Image - Square Shape */}
+        <div className="relative w-full aspect-square bg-slate-700 overflow-hidden group">
           {!imageError && product.image ? (
             <img 
               src={product.image.startsWith('http') ? product.image : `http://localhost:5001${product.image}`} 
               alt={product.name}
-              className={`w-full h-full object-cover transition-all duration-700 ${isHovered ? 'scale-110 rotate-2' : 'scale-100'}`}
+              className="w-full h-full object-cover"
               onError={() => setImageError(true)}
             />
           ) : product.cropType ? (
             <img 
               src={`/crops/${product.cropType}.jpg`} 
               alt={product.name}
-              className={`w-full h-full object-cover transition-all duration-700 ${isHovered ? 'scale-110' : 'scale-100'}`}
+              className="w-full h-full object-cover"
               onError={() => setImageError(true)}
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-8xl animate-pulse">🌾</div>
+            <div className="w-full h-full flex items-center justify-center bg-slate-700">
+              <svg className="w-16 h-16 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
           )}
           
-          {/* Gradient Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          {/* Dark overlay */}
+          <div className="absolute inset-0 bg-black/10"></div>
           
           {/* Wishlist Button */}
           <button
             onClick={() => toggleWishlist(product)}
-            className={`absolute top-4 right-4 p-3 rounded-full transition-all duration-300 shadow-xl backdrop-blur-md ${
+            className={`absolute top-3 right-3 p-2 rounded-lg transition-colors ${
               isProductInWishlist 
-                ? 'bg-red-500 text-white scale-110' 
-                : 'bg-slate-900/70 text-slate-300 hover:text-red-400 hover:scale-110'
+                ? 'bg-red-500 text-white' 
+                : 'bg-slate-900/70 text-slate-300 hover:text-red-400'
             }`}
+            title={isProductInWishlist ? 'Remove from Wishlist' : 'Add to Wishlist'}
           >
-            <svg className="w-6 h-6" fill={isProductInWishlist ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5" fill={isProductInWishlist ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
             </svg>
           </button>
 
           {/* Stock Badge */}
           {!inStock && (
-            <div className="absolute top-4 left-4 bg-red-500/90 backdrop-blur-md text-white px-4 py-2 rounded-full text-sm font-bold shadow-xl animate-pulse">
+            <div className="absolute top-3 left-3 bg-red-600 text-white px-3 py-1 rounded-lg text-xs font-semibold">
               Out of Stock
             </div>
           )}
 
           {/* Organic Badge */}
           {product.organicCertified && (
-            <div className="absolute top-4 left-4 bg-green-500/90 backdrop-blur-md text-white px-4 py-2 rounded-full text-sm font-bold shadow-xl flex items-center gap-1">
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <div className="absolute top-3 left-3 bg-green-600 text-white px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 shadow-md">
+              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
               </svg>
-              Certified Organic
+              Organic
             </div>
           )}
 
-          {/* Quick Actions - Show on Hover */}
-          <div className={`absolute bottom-4 left-4 right-4 flex gap-2 transition-all duration-300 ${isHovered ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+          {/* Add to Cart Button - Show on Hover */}
+          <div className={`absolute bottom-4 left-4 right-4 transition-opacity duration-200 ${isHovered ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
             <button
               onClick={handleAddToCart}
               disabled={!inStock}
-              className={`flex-1 py-3 px-4 rounded-xl font-bold transition-all backdrop-blur-md shadow-xl flex items-center justify-center gap-2 ${
+              className={`w-full py-2.5 px-3 rounded font-semibold text-sm transition-colors flex items-center justify-center gap-2 ${
                 inStock
-                  ? 'bg-emerald-500/90 hover:bg-emerald-600 text-white'
-                  : 'bg-slate-700/80 text-slate-400 cursor-not-allowed'
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                  : 'bg-slate-700 text-slate-400 cursor-not-allowed'
               }`}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
-              {inStock ? 'Add' : 'N/A'}
+              {inStock ? 'Add to Cart' : 'Out of Stock'}
             </button>
-            <ChatStarter
-              userId={product.farmerId?._id}
-              userName={product.farmerId?.name || 'Farmer'}
-              buttonText=""
-              className="px-4 py-3 bg-blue-600/90 backdrop-blur-md hover:bg-blue-700 text-white rounded-xl transition-all shadow-xl"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
-            </ChatStarter>
           </div>
         </div>
 
         {/* Product Info */}
-        <div className="p-5 space-y-3">
-          <div className="flex items-start justify-between gap-2">
-            <h3 className="font-bold text-lg text-white line-clamp-2 group-hover:text-emerald-400 transition-colors flex-1">
-              {product.name}
-            </h3>
-            <div className="flex items-center gap-1 text-yellow-400 flex-shrink-0">
-              <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
-                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-              </svg>
-              <span className="text-xs font-semibold">4.5</span>
-            </div>
-          </div>
+        <div className="p-3 flex-1 flex flex-col space-y-2">
+          <h3 className="font-semibold text-white text-sm line-clamp-2">
+            {product.name}
+          </h3>
           
-          <p className="text-slate-400 text-sm line-clamp-2 leading-relaxed">
-            {product.description || 'Fresh from the farm to your table'}
+          <p className="text-slate-400 text-xs line-clamp-1">
+            {product.description || 'Fresh produce'}
           </p>
 
-          {/* Price & Stock */}
-          <div className="flex items-center justify-between pt-2 border-t border-slate-700">
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-bold bg-gradient-to-r from-emerald-400 to-emerald-500 bg-clip-text text-transparent">
-                ₹{product.price}
-              </span>
-              <span className="text-slate-500 text-sm">/{product.unit || 'kg'}</span>
-            </div>
-            
-            <div className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
-              inStock ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'
-            }`}>
-              {inStock ? `${product.quantity} in stock` : 'Sold Out'}
-            </div>
+          {/* Price */}
+          <div className="flex items-baseline gap-1">
+            <span className="text-lg font-bold text-emerald-400">
+              ₹{product.price}
+            </span>
+            <span className="text-slate-500 text-xs">/{product.unit || 'kg'}</span>
+          </div>
+
+          {/* Stock Status */}
+          <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold w-fit ${
+            inStock 
+              ? 'bg-emerald-500/20 text-emerald-300' 
+              : 'bg-red-500/20 text-red-300'
+          }`}>
+            {inStock ? `${product.quantity} in stock` : 'Out of Stock'}
           </div>
 
           {/* Farmer Info */}
-          <div className="flex items-center justify-between pt-2 text-sm">
-            <div className="flex items-center gap-2 text-slate-400">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-              <span className="text-xs">{product.farmerId?.name || 'Local Farmer'}</span>
-            </div>
-            
-            {product.farmLocation && (
-              <div className="flex items-center gap-1 text-slate-500 text-xs">
-                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                </svg>
-                {product.farmLocation}
-              </div>
-            )}
+          <div className="flex items-center gap-1 text-xs text-slate-400 pt-1 border-t border-slate-700/40">
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            <span className="truncate">{product.farmerId?.name || 'Farm'}</span>
           </div>
+
+          {/* Chat Button at Bottom with Different Color */}
+          <ChatStarter
+            userId={product.farmerId?._id}
+            userName={product.farmerId?.name || 'Farmer'}
+            buttonText=""
+            className="mt-auto w-full py-2 px-3 bg-violet-600 hover:bg-violet-700 text-white rounded font-semibold text-sm transition-colors flex items-center justify-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+            Chat with Farmer
+          </ChatStarter>
         </div>
       </div>
     );
@@ -392,125 +382,91 @@ function BuyerDashboard() {
 
       {/* Toast Notification */}
       {addedToCart && (
-        <div className="fixed top-24 right-6 z-50 animate-slide-in-right">
-          <div className="bg-gradient-to-r from-emerald-600 to-emerald-500 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 border border-emerald-400/50">
-            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <div>
-              <p className="font-bold">Added to Cart!</p>
-              <p className="text-sm text-emerald-100">{addedToCart}</p>
-            </div>
+        <div className="fixed top-24 right-6 z-50">
+          <div className="bg-emerald-600 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 text-sm">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+            </svg>
+            <span>{addedToCart} added to cart</span>
           </div>
         </div>
       )}
 
       {/* Hero Banner with Search */}
-      <div className="relative bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 pt-20 pb-16 overflow-hidden">
-        {/* Animated Background Shapes */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute w-96 h-96 bg-white/10 rounded-full blur-3xl -top-48 -left-48 animate-pulse"></div>
-          <div className="absolute w-96 h-96 bg-white/10 rounded-full blur-3xl -bottom-48 -right-48 animate-pulse delay-700"></div>
-        </div>
-
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-10">
-            <h1 className="text-5xl md:text-6xl font-black text-white mb-4 drop-shadow-2xl">
-              Farm Fresh Marketplace
+      <div className="bg-gradient-to-b from-slate-800 via-slate-850 to-slate-900 pt-24 pb-12 border-b border-slate-700/30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10 space-y-3">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight">
+              Fresh Marketplace
             </h1>
-            <p className="text-xl md:text-2xl text-emerald-50 font-medium">
-              🌾 Direct from Local Farms to Your Table
+            <p className="text-sm md:text-base text-slate-400 max-w-2xl mx-auto">
+              Discover authentic, locally-sourced produce directly from farms near you
             </p>
           </div>
 
-          {/* Enhanced Search Bar */}
+          {/* Search Bar */}
           <div className="max-w-3xl mx-auto">
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-2xl blur-lg opacity-50 animate-pulse"></div>
-              <div className="relative bg-white rounded-2xl shadow-2xl overflow-hidden">
-                <div className="flex items-center">
-                  <svg className="w-6 h-6 text-gray-400 ml-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  <input
-                    type="text"
-                    placeholder="Search for fresh vegetables, fruits, grains, dairy products..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="flex-1 px-4 py-6 text-lg text-gray-900 placeholder-gray-500 focus:outline-none"
-                  />
-                  {searchTerm && (
-                    <button
-                      onClick={() => setSearchTerm('')}
-                      className="mr-4 p-2 text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  )}
-                  <button className="bg-gradient-to-r from-emerald-600 to-emerald-500 text-white px-10 py-6 hover:from-emerald-700 hover:to-emerald-600 transition-all font-bold text-lg">
-                    Search
+            <form onSubmit={(e) => e.preventDefault()} className="bg-slate-800/80 border border-slate-700/40 rounded-xl shadow-2xl shadow-slate-900/50 overflow-hidden transition-all focus-within:border-emerald-500/40 backdrop-blur-sm">
+              <div className="flex items-center px-5 py-3.5 gap-3">
+                <svg className="w-5 h-5 text-slate-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  type="text"
+                  placeholder="Search products, farmers, locations..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="flex-1 bg-transparent text-white placeholder-slate-500 focus:outline-none text-sm md:text-base"
+                />
+                {searchTerm && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchTerm('')}
+                    className="p-2 text-slate-500 hover:text-slate-300 transition-colors flex-shrink-0"
+                  >
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
                   </button>
-                </div>
+                )}
               </div>
-            </div>
-
-            {/* Quick Stats */}
-            <div className="mt-8 grid grid-cols-3 gap-6 text-white">
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 text-center border border-white/20">
-                <div className="text-3xl font-black">{products.length}</div>
-                <div className="text-sm text-emerald-50">Fresh Products</div>
-              </div>
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 text-center border border-white/20">
-                <div className="text-3xl font-black">{cart?.length || 0}</div>
-                <div className="text-sm text-emerald-50">Cart Items</div>
-              </div>
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 text-center border border-white/20">
-                <div className="text-3xl font-black">{wishlist?.length || 0}</div>
-                <div className="text-sm text-emerald-50">Wishlist</div>
-              </div>
-            </div>
+            </form>
           </div>
         </div>
       </div>
 
-      {/* Category Pills with Scroll */}
-      <div className="sticky top-16 z-40 bg-slate-900/95 backdrop-blur-xl border-b border-slate-800 shadow-xl">
+      {/* Category Navigation */}
+      <div className="sticky top-16 z-40 bg-slate-900/95 backdrop-blur-sm border-b border-slate-700/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => scrollCategories('left')}
-              className="flex-shrink-0 p-2 bg-slate-800 hover:bg-slate-700 text-white rounded-full transition-all"
+              className="hidden sm:flex flex-shrink-0 p-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors"
+              aria-label="Scroll categories left"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
               </svg>
             </button>
 
             <div
               ref={scrollContainerRef}
-              className="flex-1 flex items-center gap-3 overflow-x-auto scrollbar-hide scroll-smooth"
+              className="flex-1 flex items-center gap-2 overflow-x-auto scrollbar-hide scroll-smooth"
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
               {categories.map(category => (
                 <button
                   key={category.id}
                   onClick={() => setSelectedCategory(category.id)}
-                  className={`flex-shrink-0 flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all duration-300 border-2 ${
+                  className={`flex-shrink-0 px-3 sm:px-4 py-2 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
                     selectedCategory === category.id
-                      ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 text-white border-emerald-400 shadow-lg shadow-emerald-500/50 scale-105'
-                      : 'bg-slate-800 text-slate-300 border-slate-700 hover:border-emerald-500/50 hover:text-white hover:scale-105'
+                      ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20'
+                      : 'bg-slate-800/60 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-700/50'
                   }`}
                 >
-                  <span className="text-2xl">{category.icon}</span>
-                  <span className="whitespace-nowrap">{category.name}</span>
+                  {category.name}
                   {selectedCategory === category.id && (
-                    <span className="ml-2 px-2 py-0.5 bg-white/20 rounded-full text-xs">
-                      {sortedProducts.length}
-                    </span>
+                    <span className="hidden sm:inline ml-2 text-xs opacity-75">({sortedProducts.length})</span>
                   )}
                 </button>
               ))}
@@ -518,9 +474,10 @@ function BuyerDashboard() {
 
             <button
               onClick={() => scrollCategories('right')}
-              className="flex-shrink-0 p-2 bg-slate-800 hover:bg-slate-700 text-white rounded-full transition-all"
+              className="hidden sm:flex flex-shrink-0 p-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors"
+              aria-label="Scroll categories right"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
               </svg>
             </button>
@@ -529,9 +486,9 @@ function BuyerDashboard() {
       </div>
 
       {/* Filters & Controls Bar */}
-      <div className="bg-slate-900/50 border-b border-slate-800">
+      <div className="bg-slate-900/30 border-b border-slate-700/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
             {/* Left - Price Range & Filters */}
             <div className="flex items-center gap-4 flex-1">
               <button
@@ -585,7 +542,8 @@ function BuyerDashboard() {
                   </span>
                   <button
                     onClick={() => setSelectedCategory('all')}
-                    className="hover:text-emerald-300"
+                    className="hover:text-emerald-300 transition-colors"
+                    aria-label="Clear category filter"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -596,16 +554,16 @@ function BuyerDashboard() {
             </div>
 
             {/* Right - Sort & View */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-medium focus:border-emerald-500 focus:outline-none hover:bg-slate-700 transition-all cursor-pointer"
+                className="hidden md:block px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm font-medium focus:border-emerald-500 focus:outline-none hover:bg-slate-700 transition-colors cursor-pointer"
               >
-                <option value="newest">🆕 Newest First</option>
-                <option value="price-low">💰 Price: Low to High</option>
-                <option value="price-high">💎 Price: High to Low</option>
-                <option value="name">🔤 Alphabetical</option>
+                <option value="newest">Newest</option>
+                <option value="price-low">Price: Low to High</option>
+                <option value="price-high">Price: High to Low</option>
+                <option value="name">A-Z</option>
               </select>
 
               <div className="flex bg-slate-800 border border-slate-700 rounded-lg overflow-hidden">
@@ -642,20 +600,20 @@ function BuyerDashboard() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         {/* Results Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
+        <div className="mb-8 space-y-4">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
             <div>
-              <h2 className="text-3xl font-black text-white mb-2">
+              <h2 className="text-2xl md:text-3xl font-bold text-white mb-1">
                 {debouncedSearchTerm
                   ? `Search Results: "${debouncedSearchTerm}"`
                   : selectedCategory === 'all'
-                  ? 'All Fresh Products'
+                  ? 'Fresh Picks'
                   : categories.find(c => c.id === selectedCategory)?.name}
               </h2>
-              <p className="text-slate-400">
-                Showing <span className="text-emerald-400 font-semibold">{sortedProducts.length}</span> products
+              <p className="text-slate-400 text-sm">
+                <span className="text-emerald-400 font-semibold text-base">{sortedProducts.length}</span> {sortedProducts.length === 1 ? 'product' : 'products'} available
               </p>
             </div>
 
@@ -666,12 +624,12 @@ function BuyerDashboard() {
                   setSelectedCategory('all');
                   setPriceRange({ min: '', max: '' });
                 }}
-                className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl transition-all font-medium border border-slate-700 flex items-center gap-2"
+                className="px-5 py-2.5 bg-slate-800/60 hover:bg-slate-800 text-white rounded-lg transition-all font-medium border border-slate-700/50 flex items-center gap-2 text-sm whitespace-nowrap"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-                Clear All Filters
+                Clear Filters
               </button>
             )}
           </div>
@@ -679,20 +637,18 @@ function BuyerDashboard() {
 
         {/* Products Grid/List */}
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-32">
-            <div className="relative">
-              <div className="w-24 h-24 border-8 border-slate-700 border-t-emerald-500 rounded-full animate-spin"></div>
-              <div className="absolute inset-0 w-24 h-24 border-8 border-transparent border-t-emerald-400 rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
-            </div>
-            <p className="text-slate-400 text-xl mt-8 font-medium">Fetching fresh products...</p>
-            <p className="text-slate-500 text-sm mt-2">This won't take long</p>
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="w-16 h-16 border-4 border-slate-700 border-t-emerald-500 rounded-full animate-spin"></div>
+            <p className="text-slate-400 mt-6">Loading products...</p>
           </div>
         ) : sortedProducts.length === 0 ? (
-          <div className="text-center py-32 bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl border border-slate-700">
-            <div className="text-8xl mb-6 animate-bounce">🔍</div>
-            <h3 className="text-3xl font-black text-white mb-4">No Products Found</h3>
-            <p className="text-slate-400 text-lg mb-8 max-w-md mx-auto">
-              We couldn't find any products matching your criteria. Try adjusting your filters or search terms.
+          <div className="text-center py-20 bg-slate-800/40 rounded-2xl border border-slate-700/50 backdrop-blur-sm">
+            <svg className="w-16 h-16 text-slate-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <h3 className="text-2xl font-semibold text-white mb-3">No Products Found</h3>
+            <p className="text-slate-400 mb-6 max-w-md mx-auto">
+              No products match your current filters. Try adjusting your search criteria.
             </p>
             <button
               onClick={() => {
@@ -701,16 +657,16 @@ function BuyerDashboard() {
                 setPriceRange({ min: '', max: '' });
                 setSortBy('newest');
               }}
-              className="px-8 py-4 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white rounded-xl font-bold text-lg shadow-xl shadow-emerald-500/25 transition-all transform hover:scale-105"
+              className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition-colors"
             >
-              Reset All Filters
+              Reset Filters
             </button>
           </div>
         ) : (
           <div className={`${
             viewMode === 'grid'
-              ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
-              : 'space-y-4'
+              ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 auto-rows-max gap-4'
+              : 'space-y-3'
           }`}>
             {sortedProducts.map(product => (
               <ProductCard key={product._id} product={product} viewMode={viewMode} />
@@ -719,35 +675,24 @@ function BuyerDashboard() {
         )}
       </div>
 
-      {/* Enhanced Floating Cart Button */}
+      {/* Floating Cart Button */}
       {cart && cart.length > 0 && (
         <button
-          onClick={() => navigate('/cart')}
-          className="fixed bottom-8 right-8 z-50 group"
+          onClick={() => navigate('/buyer/cart')}
+          className="fixed bottom-8 right-8 z-40 bg-gradient-to-br from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white px-6 py-4 rounded-xl shadow-2xl shadow-emerald-600/40 flex items-center gap-3 transition-all duration-300 text-base font-semibold hover:shadow-emerald-600/60 group"
         >
           <div className="relative">
-            {/* Pulsing Background */}
-            <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-emerald-500 rounded-2xl blur-xl opacity-75 group-hover:opacity-100 animate-pulse"></div>
-            
-            {/* Main Button */}
-            <div className="relative bg-gradient-to-r from-emerald-600 to-emerald-500 text-white px-8 py-4 rounded-2xl shadow-2xl flex items-center gap-4 transform group-hover:scale-110 transition-all duration-300 border border-emerald-400/50">
-              <div className="relative">
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center border-2 border-white animate-bounce">
-                  {cart.reduce((sum, item) => sum + item.quantity, 0)}
-                </span>
-              </div>
-              <div className="text-left">
-                <div className="font-black text-lg">View Cart</div>
-                <div className="text-emerald-100 text-sm font-semibold">
-                  ₹{cart.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2)}
-                </div>
-              </div>
-              <svg className="w-6 h-6 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-              </svg>
+            <svg className="w-7 h-7 group-hover:scale-110 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            <span className="absolute -top-3 -right-3 bg-gradient-to-br from-violet-500 to-violet-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-xl shadow-violet-600/50 border border-violet-400/60">
+              {cart.reduce((sum, item) => sum + item.quantity, 0)}
+            </span>
+          </div>
+          <div className="hidden md:block text-left">
+            <div className="font-bold text-sm">Cart</div>
+            <div className="text-xs opacity-95">
+              ₹{cart.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(0)}
             </div>
           </div>
         </button>
