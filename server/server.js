@@ -84,53 +84,97 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
-// MongoDB connection
-mongoose.connect(process.env.MONGODB_URI, {
-  serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
-  socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
-  family: 4 // Use IPv4, skip trying IPv6
-}).then(() => {
-  console.log('MongoDB connected successfully 💡');
-}).catch(err => {
-  console.error('MongoDB connection error:', err);
-  process.exit(1);
-});
+// MongoDB connection with retry logic
+let mongoConnected = false;
+
+function connectMongoDB() {
+  mongoose.connect(process.env.MONGODB_URI, {
+    serverSelectionTimeoutMS: 5000,
+    socketTimeoutMS: 45000,
+    family: 4
+  })
+  .then(() => {
+    console.log('✅ MongoDB connected successfully');
+    mongoConnected = true;
+  })
+  .catch(err => {
+    console.error('⚠️  MongoDB connection error:', err.message);
+    mongoConnected = false;
+    console.log('📝 Retrying MongoDB connection in 5 seconds...');
+    setTimeout(connectMongoDB, 5000);
+  });
+}
+
+connectMongoDB();
 
 // Socket.IO events
 const connectedUsers = new Map(); // Track connected users
 
 io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
+  console.log('🔗 User connected:', socket.id);
 
   // User joins their personal room
-  socket.on('join', (userId) => {
+  socket.on('userConnected', (data) => {
+    const userId = data.userId;
     socket.join(`user_${userId}`);
-    connectedUsers.set(userId, socket.id);
-    console.log(`User ${userId} joined room user_${userId}`);
+    connectedUsers.set(userId, { socketId: socket.id, connected: true });
+    console.log(`✅ User ${userId} connected - Room: user_${userId}`);
+    
+    // Broadcast user online status
+    io.emit('userOnline', { userId, timestamp: new Date() });
   });
 
-  // Handle messages
+  // Handle sending messages - real-time delivery
   socket.on('sendMessage', (data) => {
-    io.emit('receiveMessage', data);
+    const { senderId, recipientId, content, createdAt } = data;
+    
+    // Send to specific recipient
+    io.to(`user_${recipientId}`).emit('newMessage', {
+      senderId,
+      recipientId,
+      content,
+      createdAt,
+      delivered: true
+    });
+    
+    console.log(`💬 Message from ${senderId} to ${recipientId}: ${content.substring(0, 30)}...`);
+  });
+
+  // Handle typing indicator
+  socket.on('typing', (data) => {
+    const { recipientId } = data;
+    io.to(`user_${recipientId}`).emit('userTyping', { userId: data.senderId || socket.userId });
+  });
+
+  // Handle stopped typing
+  socket.on('stoppedTyping', (data) => {
+    const { recipientId } = data;
+    io.to(`user_${recipientId}`).emit('userStoppedTyping', { userId: data.senderId || socket.userId });
   });
 
   // Handle notification acknowledgment
   socket.on('notificationRead', (notificationId) => {
-    // Could emit to other relevant users if needed
-    console.log(`Notification ${notificationId} marked as read`);
+    console.log(`📬 Notification ${notificationId} marked as read`);
   });
 
   // Handle disconnect
   socket.on('disconnect', () => {
-    // Remove user from connected users map
-    for (const [userId, socketId] of connectedUsers.entries()) {
-      if (socketId === socket.id) {
-        connectedUsers.delete(userId);
-        console.log(`User ${userId} disconnected`);
+    let userId = null;
+    
+    // Find and remove user from connected users map
+    for (const [id, userData] of connectedUsers.entries()) {
+      if (userData.socketId === socket.id) {
+        userId = id;
+        connectedUsers.delete(id);
+        console.log(`❌ User ${id} disconnected`);
+        
+        // Broadcast user offline status
+        io.emit('userOffline', { userId: id, timestamp: new Date() });
         break;
       }
     }
-    console.log('User disconnected:', socket.id);
+    
+    console.log(`Disconnected socket: ${socket.id}`);
   });
 });
 
@@ -139,14 +183,15 @@ global.io = io;
 global.connectedUsers = connectedUsers;
 
 // Auto-increment port logic
-let port = process.env.PORT ? parseInt(process.env.PORT) : 5000;
+let port = process.env.PORT ? parseInt(process.env.PORT) : 5002;
 function tryStart(p) {
   server.listen(p, '127.0.0.1')  // Force IPv4 binding
     .on('listening', () => {
       const actualPort = server.address().port;
-      console.log(`Server running on port 🚀 ${actualPort}`);
+      console.log(`✅ Server running on port 🚀 ${actualPort}`);
       console.log(`Server address:`, server.address());
       console.log(`Health endpoint: http://127.0.0.1:${actualPort}/health`);
+      console.log(`Chat API: http://127.0.0.1:${actualPort}/api/messages`);
     })
     .on('error', (err) => {
       if (err.code === 'EADDRINUSE') {

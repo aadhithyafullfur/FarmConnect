@@ -526,7 +526,7 @@ function FarmerDashboard() {
                         <div className="relative h-32 bg-gray-700/50 overflow-hidden">
                           {product.image ? (
                             <img 
-                              src={product.image.startsWith('http') ? product.image : `http://localhost:5001${product.image}`} 
+                              src={product.image.startsWith('http') ? product.image : `http://localhost:5003${product.image}`} 
                               alt={product.name}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                               onError={(e) => {
@@ -618,7 +618,7 @@ function FarmerDashboard() {
                       <div className="relative h-48 bg-gray-700/50 overflow-hidden">
                         {product.image ? (
                           <img 
-                            src={product.image.startsWith('http') ? product.image : `http://localhost:5001${product.image}`} 
+                            src={product.image.startsWith('http') ? product.image : `http://localhost:5002${product.image}`} 
                             alt={product.name}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                             onError={(e) => {
@@ -1586,7 +1586,7 @@ function FarmerDashboard() {
                       <div key={index} className="flex items-center space-x-3 p-3 bg-gray-600/30 rounded-lg">
                         {item.productImage && (
                           <img
-                            src={`http://localhost:5001${item.productImage}`}
+                            src={`http://localhost:5003${item.productImage}`}
                             alt={item.productName}
                             className="w-12 h-12 object-cover rounded-lg"
                           />
@@ -1799,7 +1799,7 @@ function FarmerDashboard() {
                 <div className="flex items-center gap-3">
                   {productToDelete.image ? (
                     <img
-                      src={productToDelete.image.startsWith('http') ? productToDelete.image : `http://localhost:5001${productToDelete.image}`}
+                      src={productToDelete.image.startsWith('http') ? productToDelete.image : `http://localhost:5003${productToDelete.image}`}
                       alt={productToDelete.name}
                       className="w-16 h-16 object-cover rounded-lg"
                       onError={(e) => {

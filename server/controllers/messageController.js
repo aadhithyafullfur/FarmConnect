@@ -3,8 +3,15 @@ const User = require('../models/User');
 
 exports.sendMessage = async (req, res) => {
   try {
-    const { recipientId, content } = req.body;
-    const senderId = req.user._id;
+    const { recipientId, content, senderId } = req.body;
+    
+    // Use senderId from request body or from authenticated user
+    const actualSenderId = senderId || (req.user && req.user._id);
+    
+    if (!actualSenderId || !recipientId || !content) {
+      console.error('Missing required fields:', { actualSenderId, recipientId, content });
+      return res.status(400).json({ error: 'Missing required fields: senderId, recipientId, content' });
+    }
 
     // Validate recipient exists
     const recipient = await User.findById(recipientId);
@@ -12,24 +19,40 @@ exports.sendMessage = async (req, res) => {
       return res.status(404).json({ error: 'Recipient not found' });
     }
 
+    // Validate sender exists
+    const sender = await User.findById(actualSenderId);
+    if (!sender) {
+      return res.status(404).json({ error: 'Sender not found' });
+    }
+
     const message = new Message({
-      senderId,
+      senderId: actualSenderId,
       recipientId,
       content
     });
 
     await message.save();
+    
+    console.log(`✅ Message saved: ${actualSenderId} -> ${recipientId}: "${content.substring(0, 30)}..."`);
 
-    // Emit socket event
-    req.app.get('io').emit('newMessage', {
-      message,
-      sender: req.user.name
-    });
+    // Emit socket event to recipient
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user_${recipientId}`).emit('newMessage', {
+        _id: message._id,
+        senderId: message.senderId,
+        recipientId: message.recipientId,
+        content: message.content,
+        createdAt: message.createdAt,
+        delivered: true
+      });
+      console.log(`📡 Socket.io emitted to user_${recipientId}`);
+    }
 
     res.status(201).json(message);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error while sending message' });
+    console.error('❌ Error in sendMessage:', err);
+    res.status(500).json({ error: 'Server error while sending message: ' + err.message });
   }
 };
 

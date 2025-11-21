@@ -160,7 +160,7 @@ function BuyerDashboard() {
             <div className="relative w-32 h-32 flex-shrink-0 bg-slate-700 rounded-xl overflow-hidden">
               {!imageError && product.image ? (
                 <img 
-                  src={product.image.startsWith('http') ? product.image : `http://localhost:5001${product.image}`} 
+                  src={product.image.startsWith('http') ? product.image : `http://localhost:5003${product.image}`} 
                   alt={product.name}
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                   onError={() => setImageError(true)}
@@ -250,7 +250,7 @@ function BuyerDashboard() {
         <div className="relative w-full aspect-square bg-slate-700 overflow-hidden group">
           {!imageError && product.image ? (
             <img 
-              src={product.image.startsWith('http') ? product.image : `http://localhost:5001${product.image}`} 
+              src={product.image.startsWith('http') ? product.image : `http://localhost:5002${product.image}`} 
               alt={product.name}
               className="w-full h-full object-cover"
               onError={() => setImageError(true)}
