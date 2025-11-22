@@ -9,11 +9,11 @@ const createOrder = async (req, res) => {
   try {
     console.log('=== ORDER CREATION REQUEST ===');
     console.log('Request body:', JSON.stringify(req.body, null, 2));
-    console.log('User ID:', req.user.id);
+    console.log('User ID:', req.user._id);
     console.log('==============================');
 
     const { items, deliveryAddress, paymentMethod, specialInstructions, totalAmount } = req.body;
-    const buyerId = req.user.id;
+    const buyerId = req.user._id;
 
     // Validate required fields
     if (!items || items.length === 0) {
@@ -169,7 +169,7 @@ const createOrder = async (req, res) => {
 // Get buyer's orders
 const getBuyerOrders = async (req, res) => {
   try {
-    const buyerId = req.user.id;
+    const buyerId = req.user._id;
     
     const orders = await Order.find({ buyerId: buyerId })
       .populate('buyerId', 'name email')
@@ -187,7 +187,7 @@ const getBuyerOrders = async (req, res) => {
 // Get farmer's orders
 const getFarmerOrders = async (req, res) => {
   try {
-    const farmerId = req.user.id;
+    const farmerId = req.user._id;
     
     const orders = await Order.find({ 'items.farmerId': farmerId })
       .populate('buyerId', 'name email phone')
@@ -206,7 +206,7 @@ const getFarmerOrders = async (req, res) => {
 const getOrderById = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const userId = req.user.id;
+    const userId = req.user._id;
 
     const order = await Order.findById(orderId)
       .populate('buyer', 'name email phone')
@@ -237,7 +237,7 @@ const updateOrderStatus = async (req, res) => {
   try {
     const { orderId } = req.params;
     const { status } = req.body;
-    const farmerId = req.user.id;
+    const farmerId = req.user._id;
 
     const validStatuses = ['pending', 'confirmed', 'preparing', 'ready', 'shipped', 'delivered', 'cancelled'];
     if (!validStatuses.includes(status)) {
@@ -320,7 +320,7 @@ const updateOrderStatus = async (req, res) => {
 const cancelOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const buyerId = req.user.id;
+    const buyerId = req.user._id;
 
     const order = await Order.findById(orderId);
     if (!order) {

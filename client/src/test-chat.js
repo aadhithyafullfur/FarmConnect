@@ -1,5 +1,5 @@
 // Quick test to see what's happening with the chat
-const API_URL = 'http://localhost:5003';
+const API_URL = 'http://localhost:5004';
 
 // Get token from localStorage (you need to be logged in)
 const token = localStorage.getItem('token');

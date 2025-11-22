@@ -20,7 +20,7 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002'],
-    methods: ['GET', 'POST'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   },
 });
 
@@ -28,7 +28,7 @@ const io = new Server(server, {
 app.use(cors({
   origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002'],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   preflightContinue: false,
   optionsSuccessStatus: 200

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import ChatBox from './ChatBox';
 
-const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:5003';
+const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:5004';
 
 const ChatInterface = () => {
   const [isOpen, setIsOpen] = useState(false);

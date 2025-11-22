@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
 import api from "../../services/api";
 import { showSuccess, showError, showWarning } from "../../utils/notifications";
@@ -11,6 +11,7 @@ import EditProductModal from "../../components/EditProductModal";
 
 function FarmerDashboard() {
   const { user } = useContext(AuthContext);
+  const navigate = useNavigate();
 
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -31,6 +32,7 @@ function FarmerDashboard() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [productToDelete, setProductToDelete] = useState(null);
   const [deletingProduct, setDeletingProduct] = useState(false);
+  const [updatingOrderId, setUpdatingOrderId] = useState(null);
 
   // Navigation handler for tab switching
   const handleTabChange = (tabName) => {
@@ -112,24 +114,39 @@ function FarmerDashboard() {
 
   const updateOrderStatus = async (orderId, newStatus) => {
     try {
-      await api.patch(`/orders/${orderId}/status`, { status: newStatus });
+      setUpdatingOrderId(orderId);
+
+      const response = await api.patch(`/orders/${orderId}/status`, { status: newStatus });
       
-      // Update local state
+      if (!response.data) {
+        throw new Error('Failed to update order status');
+      }
+      
+      // Update local state with the updated order data
       setOrders(orders.map(order => 
-        order._id === orderId ? { ...order, status: newStatus } : order
+        order._id === orderId ? { ...order, status: newStatus, ...response.data } : order
       ));
-      
-      showSuccess(`Order status updated to ${newStatus}`);
       
       // Recalculate analytics
       const updatedOrders = orders.map(order => 
         order._id === orderId ? { ...order, status: newStatus } : order
       );
       calculateAnalytics(products, updatedOrders);
+
+      const statusText = newStatus.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      showSuccess(`✅ Order status updated to ${statusText}`);
     } catch (error) {
       console.error('Error updating order status:', error);
-      showError('Failed to update order status');
+      const errorMsg = error.response?.data?.message || error.message || 'Failed to update order status';
+      showError(`❌ ${errorMsg}`);
+    } finally {
+      setUpdatingOrderId(null);
     }
+  };
+
+  // Handle order status change with direct update
+  const handleOrderStatusChange = (orderId, newStatus) => {
+    updateOrderStatus(orderId, newStatus);
   };
 
   // Handle viewing order details
@@ -527,7 +544,7 @@ function FarmerDashboard() {
                         <div className="relative h-32 bg-gray-700/50 overflow-hidden">
                           {product.image ? (
                             <img 
-                              src={product.image.startsWith('http') ? product.image : `http://localhost:5003${product.image}`} 
+                              src={product.image.startsWith('http') ? product.image : `http://localhost:5004${product.image}`} 
                               alt={product.name}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                               onError={(e) => {
@@ -619,7 +636,7 @@ function FarmerDashboard() {
                       <div className="relative h-48 bg-gray-700/50 overflow-hidden">
                         {product.image ? (
                           <img 
-                            src={product.image.startsWith('http') ? product.image : `http://localhost:5003${product.image}`} 
+                            src={product.image.startsWith('http') ? product.image : `http://localhost:5004${product.image}`} 
                             alt={product.name}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                             onError={(e) => {
@@ -1016,29 +1033,59 @@ function FarmerDashboard() {
                               </div>
 
                               {/* Action Buttons */}
-                              <div className="space-y-2">
+                              <div className="space-y-2 pt-4 border-t border-gray-600/30">
                                 {order.status === 'pending' && (
                                   <>
                                     <button
-                                      onClick={() => updateOrderStatus(order._id, 'confirmed')}
-                                      className="w-full px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white rounded-lg transition-all duration-200 flex items-center justify-center space-x-2"
+                                      onClick={() => handleOrderStatusChange(order._id, 'confirmed')}
+                                      disabled={updatingOrderId === order._id}
+                                      className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 disabled:from-blue-600/50 disabled:to-blue-700/50 disabled:cursor-not-allowed text-white rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 font-semibold shadow-lg hover:shadow-blue-500/20"
                                     >
-                                      <span>✅</span>
-                                      <span>Confirm Order</span>
+                                      {updatingOrderId === order._id ? (
+                                        <>
+                                          <span className="inline-block animate-spin">⏳</span>
+                                          <span>Confirming...</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <span>✅</span>
+                                          <span>Confirm Order</span>
+                                        </>
+                                      )}
                                     </button>
                                     <button
-                                      onClick={() => updateOrderStatus(order._id, 'preparing')}
-                                      className="w-full px-4 py-2 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-500 hover:to-orange-600 text-white rounded-lg transition-all duration-200 flex items-center justify-center space-x-2"
+                                      onClick={() => handleOrderStatusChange(order._id, 'preparing')}
+                                      disabled={updatingOrderId === order._id}
+                                      className="w-full px-4 py-3 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-500 hover:to-orange-600 disabled:from-orange-600/50 disabled:to-orange-700/50 disabled:cursor-not-allowed text-white rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 font-semibold shadow-lg hover:shadow-orange-500/20"
                                     >
-                                      <span>👨‍🍳</span>
-                                      <span>Start Preparing</span>
+                                      {updatingOrderId === order._id ? (
+                                        <>
+                                          <span className="inline-block animate-spin">⏳</span>
+                                          <span>Starting...</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <span>👨‍🍳</span>
+                                          <span>Start Preparing</span>
+                                        </>
+                                      )}
                                     </button>
                                     <button
-                                      onClick={() => updateOrderStatus(order._id, 'cancelled')}
-                                      className="w-full px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white rounded-lg transition-all duration-200 flex items-center justify-center space-x-2"
+                                      onClick={() => handleOrderStatusChange(order._id, 'cancelled')}
+                                      disabled={updatingOrderId === order._id}
+                                      className="w-full px-4 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 disabled:from-red-600/50 disabled:to-red-700/50 disabled:cursor-not-allowed text-white rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 font-semibold shadow-lg hover:shadow-red-500/20"
                                     >
-                                      <span>❌</span>
-                                      <span>Cancel Order</span>
+                                      {updatingOrderId === order._id ? (
+                                        <>
+                                          <span className="inline-block animate-spin">⏳</span>
+                                          <span>Cancelling...</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <span>❌</span>
+                                          <span>Cancel Order</span>
+                                        </>
+                                      )}
                                     </button>
                                   </>
                                 )}
@@ -1046,18 +1093,38 @@ function FarmerDashboard() {
                                 {order.status === 'confirmed' && (
                                   <>
                                     <button
-                                      onClick={() => updateOrderStatus(order._id, 'preparing')}
-                                      className="w-full px-4 py-2 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-500 hover:to-orange-600 text-white rounded-lg transition-all duration-200 flex items-center justify-center space-x-2"
+                                      onClick={() => handleOrderStatusChange(order._id, 'preparing')}
+                                      disabled={updatingOrderId === order._id}
+                                      className="w-full px-4 py-3 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-500 hover:to-orange-600 disabled:from-orange-600/50 disabled:to-orange-700/50 disabled:cursor-not-allowed text-white rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 font-semibold shadow-lg hover:shadow-orange-500/20"
                                     >
-                                      <span>👨‍🍳</span>
-                                      <span>Start Preparing</span>
+                                      {updatingOrderId === order._id ? (
+                                        <>
+                                          <span className="inline-block animate-spin">⏳</span>
+                                          <span>Starting...</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <span>👨‍🍳</span>
+                                          <span>Start Preparing</span>
+                                        </>
+                                      )}
                                     </button>
                                     <button
-                                      onClick={() => updateOrderStatus(order._id, 'out_for_delivery')}
-                                      className="w-full px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white rounded-lg transition-all duration-200 flex items-center justify-center space-x-2"
+                                      onClick={() => handleOrderStatusChange(order._id, 'out_for_delivery')}
+                                      disabled={updatingOrderId === order._id}
+                                      className="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 disabled:from-purple-600/50 disabled:to-purple-700/50 disabled:cursor-not-allowed text-white rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 font-semibold shadow-lg hover:shadow-purple-500/20"
                                     >
-                                      <span>🚚</span>
-                                      <span>Ready for Delivery</span>
+                                      {updatingOrderId === order._id ? (
+                                        <>
+                                          <span className="inline-block animate-spin">⏳</span>
+                                          <span>Preparing...</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <span>🚚</span>
+                                          <span>Ready for Delivery</span>
+                                        </>
+                                      )}
                                     </button>
                                   </>
                                 )}
@@ -1065,35 +1132,65 @@ function FarmerDashboard() {
                                 {order.status === 'preparing' && (
                                   <>
                                     <button
-                                      onClick={() => updateOrderStatus(order._id, 'out_for_delivery')}
-                                      className="w-full px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white rounded-lg transition-all duration-200 flex items-center justify-center space-x-2"
+                                      onClick={() => handleOrderStatusChange(order._id, 'out_for_delivery')}
+                                      disabled={updatingOrderId === order._id}
+                                      className="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 disabled:from-purple-600/50 disabled:to-purple-700/50 disabled:cursor-not-allowed text-white rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 font-semibold shadow-lg hover:shadow-purple-500/20"
                                     >
-                                      <span>🚚</span>
-                                      <span>Ready for Delivery</span>
+                                      {updatingOrderId === order._id ? (
+                                        <>
+                                          <span className="inline-block animate-spin">⏳</span>
+                                          <span>Marking...</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <span>🚚</span>
+                                          <span>Ready for Delivery</span>
+                                        </>
+                                      )}
                                     </button>
                                     <button
-                                      onClick={() => updateOrderStatus(order._id, 'delivered')}
-                                      className="w-full px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white rounded-lg transition-all duration-200 flex items-center justify-center space-x-2"
+                                      onClick={() => handleOrderStatusChange(order._id, 'delivered')}
+                                      disabled={updatingOrderId === order._id}
+                                      className="w-full px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 disabled:from-green-600/50 disabled:to-green-700/50 disabled:cursor-not-allowed text-white rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 font-semibold shadow-lg hover:shadow-green-500/20"
                                     >
-                                      <span>✅</span>
-                                      <span>Mark as Delivered</span>
+                                      {updatingOrderId === order._id ? (
+                                        <>
+                                          <span className="inline-block animate-spin">⏳</span>
+                                          <span>Marking...</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <span>✅</span>
+                                          <span>Mark as Delivered</span>
+                                        </>
+                                      )}
                                     </button>
                                   </>
                                 )}
 
                                 {order.status === 'out_for_delivery' && (
                                   <button
-                                    onClick={() => updateOrderStatus(order._id, 'delivered')}
-                                    className="w-full px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white rounded-lg transition-all duration-200 flex items-center justify-center space-x-2"
+                                    onClick={() => handleOrderStatusChange(order._id, 'delivered')}
+                                    disabled={updatingOrderId === order._id}
+                                    className="w-full px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 disabled:from-green-600/50 disabled:to-green-700/50 disabled:cursor-not-allowed text-white rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 font-semibold shadow-lg hover:shadow-green-500/20"
                                   >
-                                    <span>✅</span>
-                                    <span>Mark as Delivered</span>
+                                    {updatingOrderId === order._id ? (
+                                      <>
+                                        <span className="inline-block animate-spin">⏳</span>
+                                        <span>Completing...</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <span>✅</span>
+                                        <span>Mark as Delivered</span>
+                                      </>
+                                    )}
                                   </button>
                                 )}
 
                                 {(order.status === 'delivered' || order.status === 'cancelled') && (
-                                  <div className="text-center py-4">
-                                    <span className="text-gray-400 text-sm">Order {order.status}</span>
+                                  <div className="text-center py-6 rounded-lg bg-gray-800/40 border border-gray-600/30">
+                                    <span className="text-gray-400 text-sm font-medium capitalize">✓ Order {order.status}</span>
                                   </div>
                                 )}
                               </div>
@@ -1587,7 +1684,7 @@ function FarmerDashboard() {
                       <div key={index} className="flex items-center space-x-3 p-3 bg-gray-600/30 rounded-lg">
                         {item.productImage && (
                           <img
-                            src={`http://localhost:5003${item.productImage}`}
+                            src={`http://localhost:5004${item.productImage}`}
                             alt={item.productName}
                             className="w-12 h-12 object-cover rounded-lg"
                           />
@@ -1800,7 +1897,7 @@ function FarmerDashboard() {
                 <div className="flex items-center gap-3">
                   {productToDelete.image ? (
                     <img
-                      src={productToDelete.image.startsWith('http') ? productToDelete.image : `http://localhost:5003${productToDelete.image}`}
+                      src={productToDelete.image.startsWith('http') ? productToDelete.image : `http://localhost:5004${productToDelete.image}`}
                       alt={productToDelete.name}
                       className="w-16 h-16 object-cover rounded-lg"
                       onError={(e) => {
@@ -1862,6 +1959,20 @@ function FarmerDashboard() {
 
       {/* WhatsApp Style Chat */}
       <WhatsAppButton />
+
+      {/* Go to Chat Shortcut */}
+      <button
+        onClick={() => navigate('/chat')}
+        title="Go to Chat"
+        className="fixed bottom-28 right-6 z-40 bg-gradient-to-br from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-full p-4 shadow-lg hover:shadow-xl transition duration-300 flex items-center justify-center group"
+      >
+        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5z" />
+        </svg>
+        <span className="absolute -top-10 right-0 bg-gray-800 text-white text-xs px-3 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition whitespace-nowrap">
+          Go to Chat
+        </span>
+      </button>
     </div>
   );
 }

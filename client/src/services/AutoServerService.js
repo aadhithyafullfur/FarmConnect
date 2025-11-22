@@ -1,7 +1,7 @@
 // Auto-Server Startup Service
 class AutoServerService {
   constructor() {
-    this.serverUrl = 'http://localhost:5003';
+    this.serverUrl = 'http://localhost:5004';
     this.healthEndpoint = `${this.serverUrl}/health`;
     this.isMonitoring = false;
     this.retryCount = 0;

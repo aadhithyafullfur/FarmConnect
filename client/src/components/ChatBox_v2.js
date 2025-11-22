@@ -7,9 +7,12 @@ const ChatBoxV2 = ({ recipientId, recipientName, onClose }) => {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState(null);
   const [error, setError] = useState(null);
+  const [sending, setSending] = useState(false);
+  const [deleting, setDeleting] = useState(null);
+  const [hoveredMessageId, setHoveredMessageId] = useState(null);
   const messagesEndRef = useRef(null);
 
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5003';
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5004';
 
   // Get current user ID
   useEffect(() => {
@@ -79,7 +82,6 @@ const ChatBoxV2 = ({ recipientId, recipientName, onClose }) => {
     e.preventDefault();
 
     if (!messageText.trim()) {
-      setError('Please enter a message');
       return;
     }
 
@@ -98,6 +100,8 @@ const ChatBoxV2 = ({ recipientId, recipientName, onClose }) => {
       setError('No authentication token');
       return;
     }
+
+    setSending(true);
 
     try {
       console.log('Sending message:', {
@@ -129,7 +133,9 @@ const ChatBoxV2 = ({ recipientId, recipientName, onClose }) => {
       setError(null);
     } catch (err) {
       console.error('Error sending message:', err.response?.data || err.message);
-      setError(`Failed to send message: ${err.response?.data?.error || err.message}`);
+      setError('Failed to send message');
+    } finally {
+      setSending(false);
     }
   };
 
@@ -139,107 +145,179 @@ const ChatBoxV2 = ({ recipientId, recipientName, onClose }) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  const handleDeleteMessage = async (messageId) => {
+    if (!messageId) return;
+    
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setError('No authentication token');
+      return;
+    }
+
+    setDeleting(messageId);
+    const deleteUrl = `${API_URL}/api/messages/${messageId}`;
+    console.log('Attempting to delete message:', { messageId, deleteUrl, API_URL });
+    
+    try {
+      const response = await axios.delete(deleteUrl, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      console.log('✅ Message deleted successfully:', response.data);
+      
+      // Remove from local state
+      setMessages(prev => prev.filter(msg => msg._id !== messageId));
+      setError(null);
+    } catch (err) {
+      console.error('❌ Error deleting message:', {
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        url: deleteUrl,
+        data: err.response?.data,
+        message: err.message
+      });
+      setError('Failed to delete message');
+    } finally {
+      setDeleting(null);
+    }
+  };
+
   return (
-    <div className="fixed bottom-24 right-6 w-96 h-screen md:h-[600px] bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 rounded-3xl shadow-2xl flex flex-col z-50 overflow-hidden border border-emerald-600/20">
+    <div className="fixed bottom-24 right-6 w-96 h-[600px] bg-gradient-to-b from-gray-900 via-gray-850 to-gray-900 rounded-2xl shadow-2xl flex flex-col z-40 overflow-hidden border border-gray-700/50 backdrop-blur-sm">
       {/* Header */}
-      <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 px-6 py-4 flex items-center justify-between shadow-lg">
-        <div className="flex-1">
-          <h3 className="font-bold text-white text-lg">{recipientName || 'User'}</h3>
-          <p className="text-emerald-50 text-xs">Online</p>
+      <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-4 flex items-center justify-between shadow-lg flex-shrink-0">
+        <div className="flex-1 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-teal-400 flex items-center justify-center text-white font-bold text-sm shadow-md">
+            {recipientName?.charAt(0)?.toUpperCase() || 'U'}
+          </div>
+          <div>
+            <h3 className="font-bold text-white text-base">{recipientName || 'User'}</h3>
+            <p className="text-emerald-50/80 text-xs font-medium">Online</p>
+          </div>
         </div>
         <button
           onClick={onClose}
-          className="text-white hover:bg-white/20 p-2 rounded-lg transition"
+          className="text-white hover:bg-white/20 p-2 rounded-lg transition flex-shrink-0"
+          aria-label="Close chat"
         >
-          ✕
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+          </svg>
         </button>
       </div>
 
       {/* Messages Container */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0 bg-gradient-to-b from-transparent to-gray-900/30">
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-600/30 border-t-emerald-600 mx-auto mb-3"></div>
-              <p className="text-slate-400 text-sm">Loading messages...</p>
+              <div className="animate-spin rounded-full h-10 w-10 border-3 border-emerald-600/30 border-t-emerald-500 mx-auto mb-3"></div>
+              <p className="text-gray-400 text-sm font-medium">Loading messages...</p>
             </div>
           </div>
         ) : error ? (
           <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <p className="text-red-400 text-sm">{error}</p>
+            <div className="text-center bg-red-900/20 border border-red-700/50 rounded-lg p-4">
+              <svg className="w-8 h-8 text-red-400 mx-auto mb-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+              <p className="text-red-300 text-sm font-medium">{error}</p>
             </div>
           </div>
         ) : messages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
-              <p className="text-slate-500 text-sm">No messages yet</p>
-              <p className="text-slate-600 text-xs mt-1">Start the conversation!</p>
+              <svg className="w-12 h-12 text-gray-600 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              <p className="text-gray-400 text-sm font-medium">No messages yet</p>
+              <p className="text-gray-500 text-xs mt-1">Start the conversation!</p>
             </div>
           </div>
         ) : (
           <>
-            {messages.map((msg, idx) => (
-              <div
-                key={msg._id || idx}
-                className={`flex ${msg.senderId === userId ? 'justify-end' : 'justify-start'} mb-2`}
-              >
-                {msg.senderId === userId ? (
-                  // Sent message
-                  <div className="max-w-xs">
-                    <div className="bg-gradient-to-br from-emerald-600 to-teal-700 text-white rounded-3xl rounded-tr-none px-5 py-3 shadow-lg">
-                      <p className="text-sm font-medium break-words">{msg.content}</p>
+            {messages.map((msg, idx) => {
+              const isSent = msg.senderId === userId;
+              return (
+                <div
+                  key={msg._id || idx}
+                  className={`flex ${isSent ? 'justify-end' : 'justify-start'} animate-fadeIn group`}
+                  onMouseEnter={() => setHoveredMessageId(msg._id)}
+                  onMouseLeave={() => setHoveredMessageId(null)}
+                >
+                  <div className={`max-w-xs lg:max-w-sm ${isSent ? 'items-end' : 'items-start'}`}>
+                    <div className="flex items-end gap-2">
+                      <div className={`px-4 py-2.5 rounded-xl text-sm font-medium break-words shadow-md transition-all hover:shadow-lg ${
+                        isSent
+                          ? 'bg-gradient-to-br from-emerald-600 to-teal-600 text-white rounded-br-none'
+                          : 'bg-gray-700 text-gray-100 rounded-bl-none border border-gray-600'
+                      }`}>
+                        {msg.content}
+                      </div>
+                      {isSent && hoveredMessageId === msg._id && (
+                        <button
+                          onClick={() => handleDeleteMessage(msg._id)}
+                          disabled={deleting === msg._id}
+                          className="flex-shrink-0 text-red-400 hover:text-red-300 disabled:opacity-50 transition-colors p-1"
+                          title="Delete message"
+                        >
+                          {deleting === msg._id ? (
+                            <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                          ) : (
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                          )}
+                        </button>
+                      )}
                     </div>
-                    <p className="text-xs text-slate-500 mt-1 text-right pr-2">
+                    <p className={`text-xs mt-1.5 font-medium ${
+                      isSent ? 'text-right pr-2 text-gray-500' : 'text-left pl-2 text-gray-500'
+                    }`}>
                       {formatTime(msg.createdAt)}
                     </p>
                   </div>
-                ) : (
-                  // Received message
-                  <div className="max-w-xs">
-                    <div className="bg-slate-800/80 border border-slate-700 text-slate-100 rounded-3xl rounded-tl-none px-5 py-3 shadow-lg">
-                      <p className="text-sm font-medium break-words">{msg.content}</p>
-                    </div>
-                    <p className="text-xs text-slate-500 mt-1 text-left pl-2">
-                      {formatTime(msg.createdAt)}
-                    </p>
-                  </div>
-                )}
-              </div>
-            ))}
+                </div>
+              );
+            })}
             <div ref={messagesEndRef} />
           </>
         )}
       </div>
 
       {/* Input Form */}
-      <form onSubmit={handleSendMessage} className="border-t border-slate-700/50 bg-slate-900/50 p-4">
-        <div className="flex gap-2">
+      <form onSubmit={handleSendMessage} className="border-t border-gray-700 bg-gray-800/50 backdrop-blur-sm p-4 flex-shrink-0">
+        <div className="flex gap-2 items-center">
           <input
             type="text"
             value={messageText}
             onChange={(e) => setMessageText(e.target.value)}
             placeholder="Type a message..."
-            className="flex-1 bg-slate-800 text-white rounded-full px-4 py-2 text-sm border border-slate-700 focus:outline-none focus:border-emerald-600 placeholder-slate-500"
+            disabled={sending || loading}
+            className="flex-1 bg-gray-700/70 text-white rounded-xl px-4 py-2.5 text-sm border border-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent placeholder-gray-500 transition-all disabled:opacity-50"
           />
           <button
             type="submit"
-            disabled={!messageText.trim() || loading}
-            className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 text-white rounded-full p-2 transition"
+            disabled={!messageText.trim() || sending || loading}
+            className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl p-2.5 transition-all shadow-lg hover:shadow-xl flex-shrink-0"
+            aria-label="Send message"
           >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-              />
-            </svg>
+            {sending ? (
+              <svg className="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            ) : (
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5.353-1.956.353 6.002a1 1 0 101.986-.122l.353-6.002 5.353 1.956a1 1 0 001.169-1.409l-7-14z" />
+              </svg>
+            )}
           </button>
         </div>
       </form>

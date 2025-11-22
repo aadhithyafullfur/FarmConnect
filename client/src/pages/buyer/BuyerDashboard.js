@@ -161,7 +161,7 @@ function BuyerDashboard() {
             <div className="relative w-32 h-32 flex-shrink-0 bg-slate-700 rounded-xl overflow-hidden">
               {!imageError && product.image ? (
                 <img 
-                  src={product.image.startsWith('http') ? product.image : `http://localhost:5003${product.image}`} 
+                  src={product.image.startsWith('http') ? product.image : `http://localhost:5004${product.image}`} 
                   alt={product.name}
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                   onError={() => setImageError(true)}
@@ -251,7 +251,7 @@ function BuyerDashboard() {
         <div className="relative w-full aspect-square bg-slate-700 overflow-hidden group">
           {!imageError && product.image ? (
             <img 
-              src={product.image.startsWith('http') ? product.image : `http://localhost:5003${product.image}`} 
+              src={product.image.startsWith('http') ? product.image : `http://localhost:5004${product.image}`} 
               alt={product.name}
               className="w-full h-full object-cover"
               onError={() => setImageError(true)}
@@ -704,6 +704,20 @@ function BuyerDashboard() {
 
       {/* WhatsApp Style Chat */}
       <WhatsAppButton />
+
+      {/* Go to Chat Shortcut */}
+      <button
+        onClick={() => navigate('/chat')}
+        title="Go to Chat"
+        className="fixed bottom-28 right-6 z-40 bg-gradient-to-br from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-full p-4 shadow-lg hover:shadow-xl transition duration-300 flex items-center justify-center group"
+      >
+        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5z" />
+        </svg>
+        <span className="absolute -top-10 right-0 bg-gray-800 text-white text-xs px-3 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition whitespace-nowrap">
+          Go to Chat
+        </span>
+      </button>
     </div>
   );
 }

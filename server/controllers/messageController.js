@@ -169,3 +169,46 @@ exports.getChatList = async (req, res) => {
     res.status(500).json({ error: 'Server error while fetching chat list' });
   }
 };
+
+exports.deleteMessage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+
+    // Validate message ID
+    if (!id) {
+      return res.status(400).json({ error: 'Message ID is required' });
+    }
+
+    // Find the message
+    const message = await Message.findById(id);
+    if (!message) {
+      console.error('❌ Message not found:', id);
+      return res.status(404).json({ error: 'Message not found' });
+    }
+
+    // Check if user is the sender (only sender can delete)
+    if (message.senderId.toString() !== userId.toString()) {
+      console.error('❌ Unauthorized delete attempt:', { messageId: id, userId });
+      return res.status(403).json({ error: 'You can only delete your own messages' });
+    }
+
+    // Delete the message
+    await Message.findByIdAndDelete(id);
+    console.log(`✅ Message deleted: ${id} by user ${userId}`);
+
+    // Emit socket event to notify recipient
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user_${message.recipientId}`).emit('messageDeleted', {
+        messageId: id,
+        deletedBy: userId
+      });
+    }
+
+    res.json({ success: true, message: 'Message deleted successfully' });
+  } catch (err) {
+    console.error('❌ Error deleting message:', err);
+    res.status(500).json({ error: 'Server error while deleting message' });
+  }
+};

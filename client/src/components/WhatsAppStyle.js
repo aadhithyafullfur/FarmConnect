@@ -11,7 +11,7 @@ const WhatsAppStyle = ({ onClose }) => {
   const [searchText, setSearchText] = useState('');
   const messagesEndRef = useRef(null);
 
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5003';
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5004';
 
   // Get user ID from token
   useEffect(() => {

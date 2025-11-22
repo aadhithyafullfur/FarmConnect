@@ -50,7 +50,7 @@ const ChatBox = ({ recipientId, recipientName, receiverId, receiverName, onClose
     if (!userId) return; // Wait for userId to be set
 
     const token = localStorage.getItem('token');
-    const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5003';
+    const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5004';
 
     // Initialize Socket.io
     const socketInstance = io(apiUrl, {
@@ -193,12 +193,12 @@ const ChatBox = ({ recipientId, recipientName, receiverId, receiverName, onClose
 
     try {
       console.log('📤 Sending message to API:', messageData);
-      console.log('🔗 URL: http://localhost:5003/api/messages');
+      console.log('🔗 URL: http://localhost:5004/api/messages');
       console.log('🔐 Token present: YES');
 
       // Send via HTTP
       const response = await axios.post(
-        'http://localhost:5003/api/messages',
+        'http://localhost:5004/api/messages',
         messageData,
         {
           headers: {
@@ -240,7 +240,7 @@ const ChatBox = ({ recipientId, recipientName, receiverId, receiverName, onClose
       // Specific error handling
       if (!error.response) {
         // Network error
-        alert('❌ Cannot connect to server!\n\nMake sure:\n1. Server is running\n2. Server is on port 5003\n3. Check: http://localhost:5003');
+        alert('❌ Cannot connect to server!\n\nMake sure:\n1. Server is running\n2. Server is on port 5004\n3. Check: http://localhost:5004');
       } else if (error.response.status === 401) {
         alert('❌ Unauthorized!\n\nYour session expired. Please log in again.');
       } else if (error.response.status === 400) {

@@ -17,7 +17,7 @@ const ChatStarter = ({ userId, userName, buttonText = "Chat", className = "" }) 
   return (
     <button
       onClick={() => setShowChat(true)}
-      className={`group relative flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-lg font-medium ${className}`}
+      className={`group relative flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-xl shadow-lg font-medium ${className}`}
     >
       {/* Icon */}
       <div className="relative">
@@ -26,11 +26,11 @@ const ChatStarter = ({ userId, userName, buttonText = "Chat", className = "" }) 
         </svg>
         
         {/* Pulse Animation */}
-        <div className="absolute inset-0 rounded-full bg-white/20 animate-ping group-hover:animate-none"></div>
+        <div className="absolute inset-0 rounded-full bg-white/20 animate-pulse group-hover:animate-none"></div>
       </div>
       
       {/* Button Text */}
-      <span className="text-sm">
+      <span className="text-sm font-semibold">
         {typeof buttonText === 'string' ? buttonText : buttonText}
       </span>
       
