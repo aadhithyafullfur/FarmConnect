@@ -1,5 +1,6 @@
 const Message = require('../models/Message');
 const User = require('../models/User');
+const mongoose = require('mongoose');
 
 exports.sendMessage = async (req, res) => {
   try {
@@ -9,19 +10,21 @@ exports.sendMessage = async (req, res) => {
     const actualSenderId = senderId || (req.user && req.user._id);
     
     if (!actualSenderId || !recipientId || !content) {
-      console.error('Missing required fields:', { actualSenderId, recipientId, content });
+      console.error('❌ Missing required fields:', { actualSenderId, recipientId, content: content ? 'YES' : 'NO' });
       return res.status(400).json({ error: 'Missing required fields: senderId, recipientId, content' });
     }
 
     // Validate recipient exists
     const recipient = await User.findById(recipientId);
     if (!recipient) {
+      console.error('❌ Recipient not found:', recipientId);
       return res.status(404).json({ error: 'Recipient not found' });
     }
 
     // Validate sender exists
     const sender = await User.findById(actualSenderId);
     if (!sender) {
+      console.error('❌ Sender not found:', actualSenderId);
       return res.status(404).json({ error: 'Sender not found' });
     }
 
@@ -33,7 +36,7 @@ exports.sendMessage = async (req, res) => {
 
     await message.save();
     
-    console.log(`✅ Message saved: ${actualSenderId} -> ${recipientId}: "${content.substring(0, 30)}..."`);
+    console.log(`✅ Message saved: ${actualSenderId} → ${recipientId}: "${content.substring(0, 50)}..."`);
 
     // Emit socket event to recipient
     const io = req.app.get('io');
@@ -58,8 +61,14 @@ exports.sendMessage = async (req, res) => {
 
 exports.getMessages = async (req, res) => {
   try {
-    const { recipientId } = req.params;
-    const senderId = req.user._id;
+    let { recipientId } = req.params;
+    let senderId = req.user._id;
+
+    // Ensure ObjectIds are properly formatted
+    recipientId = new mongoose.Types.ObjectId(recipientId);
+    senderId = new mongoose.Types.ObjectId(senderId);
+
+    console.log(`📨 Fetching messages between ${senderId} and ${recipientId}`);
 
     // Get messages between these two users
     const messages = await Message.find({
@@ -70,6 +79,8 @@ exports.getMessages = async (req, res) => {
     })
     .sort({ createdAt: 1 })
     .limit(100);
+
+    console.log(`✅ Found ${messages.length} messages`);
 
     // Mark received messages as read
     await Message.updateMany(
@@ -83,7 +94,7 @@ exports.getMessages = async (req, res) => {
 
     res.json(messages);
   } catch (err) {
-    console.error(err);
+    console.error('❌ Error fetching messages:', err);
     res.status(500).json({ error: 'Server error while fetching messages' });
   }
 };

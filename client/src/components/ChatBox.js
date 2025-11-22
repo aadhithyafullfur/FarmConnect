@@ -50,7 +50,7 @@ const ChatBox = ({ recipientId, recipientName, receiverId, receiverName, onClose
     if (!userId) return; // Wait for userId to be set
 
     const token = localStorage.getItem('token');
-    const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5002';
+    const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5003';
 
     // Initialize Socket.io
     const socketInstance = io(apiUrl, {
@@ -125,16 +125,20 @@ const ChatBox = ({ recipientId, recipientName, receiverId, receiverName, onClose
     // Fetch previous messages
     const fetchMessages = async () => {
       try {
+        console.log('📥 Fetching messages from:', `${apiUrl}/api/messages/chat/${chatRecipientId}`);
         const response = await axios.get(
           `${apiUrl}/api/messages/chat/${chatRecipientId}`,
           {
             headers: { Authorization: `Bearer ${token}` }
           }
         );
+        console.log('✅ Messages fetched:', response.data);
         setMessages(response.data || []);
         setLoading(false);
       } catch (error) {
-        console.error('Error fetching messages:', error);
+        console.error('❌ Error fetching messages:', error);
+        console.error('Status:', error.response?.status);
+        console.error('Data:', error.response?.data);
         setLoading(false);
       }
     };
@@ -189,12 +193,12 @@ const ChatBox = ({ recipientId, recipientName, receiverId, receiverName, onClose
 
     try {
       console.log('📤 Sending message to API:', messageData);
-      console.log('🔗 URL: http://localhost:5002/api/messages');
+      console.log('🔗 URL: http://localhost:5003/api/messages');
       console.log('🔐 Token present: YES');
 
       // Send via HTTP
       const response = await axios.post(
-        'http://localhost:5002/api/messages',
+        'http://localhost:5003/api/messages',
         messageData,
         {
           headers: {
@@ -236,7 +240,7 @@ const ChatBox = ({ recipientId, recipientName, receiverId, receiverName, onClose
       // Specific error handling
       if (!error.response) {
         // Network error
-        alert('❌ Cannot connect to server!\n\nMake sure:\n1. Server is running\n2. Server is on port 5002\n3. Check: http://localhost:5002');
+        alert('❌ Cannot connect to server!\n\nMake sure:\n1. Server is running\n2. Server is on port 5003\n3. Check: http://localhost:5003');
       } else if (error.response.status === 401) {
         alert('❌ Unauthorized!\n\nYour session expired. Please log in again.');
       } else if (error.response.status === 400) {

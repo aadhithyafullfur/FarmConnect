@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import ChatBox from './ChatBox';
+import ChatBoxV2 from './ChatBox_v2';
 
 const ChatStarter = ({ userId, userName, buttonText = "Chat", className = "" }) => {
   const [showChat, setShowChat] = useState(false);
 
   if (showChat) {
     return (
-      <ChatBox
-        receiverId={userId}
-        receiverName={userName}
+      <ChatBoxV2
+        recipientId={userId}
+        recipientName={userName}
         onClose={() => setShowChat(false)}
       />
     );

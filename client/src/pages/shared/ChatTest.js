@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import ChatInterface from '../../components/ChatInterface';
 import ChatStarter from '../../components/ChatStarter';
 import Navbar from '../../components/Navbar';
@@ -16,56 +16,59 @@ const ChatTest = () => {
     buyers: 0
   });
 
-  const fetchUsers = useCallback(async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await api.get('/auth/users', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const filteredUsers = response.data.filter(user => user._id !== currentUser?._id);
-      setUsers(filteredUsers);
-      
-      // Calculate stats
-      setStats({
-        totalUsers: filteredUsers.length,
-        farmers: filteredUsers.filter(u => u.role === 'farmer').length,
-        buyers: filteredUsers.filter(u => u.role === 'buyer').length
-      });
-    } catch (err) {
-      console.error('Error fetching users:', err);
-      // For demo purposes, create some dummy users if API fails
-      const dummyUsers = [
-        { _id: '1', name: 'John Farmer', role: 'farmer' },
-        { _id: '2', name: 'Sarah Buyer', role: 'buyer' },
-        { _id: '3', name: 'Mike Producer', role: 'farmer' },
-        { _id: '4', name: 'Emma Green', role: 'buyer' },
-        { _id: '5', name: 'Tom Organic', role: 'farmer' }
-      ];
-      setUsers(dummyUsers);
-      setStats({
-        totalUsers: dummyUsers.length,
-        farmers: dummyUsers.filter(u => u.role === 'farmer').length,
-        buyers: dummyUsers.filter(u => u.role === 'buyer').length
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [currentUser]);
-
   useEffect(() => {
-    // Get current user
+    // Get current user and fetch users
     const token = localStorage.getItem('token');
+    let currentUserData = null;
+    
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split('.')[1]));
-        setCurrentUser({ _id: payload.userId, name: payload.name || 'Current User' });
+        currentUserData = { _id: payload.userId, name: payload.name || 'Current User' };
+        setCurrentUser(currentUserData);
       } catch (err) {
         console.error('Error parsing token:', err);
       }
     }
 
+    // Fetch users
+    const fetchUsers = async () => {
+      try {
+        const response = await api.get('/auth/users', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const filteredUsers = response.data.filter(user => user._id !== currentUserData?._id);
+        setUsers(filteredUsers);
+        
+        // Calculate stats
+        setStats({
+          totalUsers: filteredUsers.length,
+          farmers: filteredUsers.filter(u => u.role === 'farmer').length,
+          buyers: filteredUsers.filter(u => u.role === 'buyer').length
+        });
+      } catch (err) {
+        console.error('Error fetching users:', err);
+        // For demo purposes, create some dummy users if API fails
+        const dummyUsers = [
+          { _id: '1', name: 'John Farmer', role: 'farmer' },
+          { _id: '2', name: 'Sarah Buyer', role: 'buyer' },
+          { _id: '3', name: 'Mike Producer', role: 'farmer' },
+          { _id: '4', name: 'Emma Green', role: 'buyer' },
+          { _id: '5', name: 'Tom Organic', role: 'farmer' }
+        ];
+        setUsers(dummyUsers);
+        setStats({
+          totalUsers: dummyUsers.length,
+          farmers: dummyUsers.filter(u => u.role === 'farmer').length,
+          buyers: dummyUsers.filter(u => u.role === 'buyer').length
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchUsers();
-  }, [fetchUsers]);
+  }, []);
 
   // Filter users based on search and role
   const filteredUsers = users.filter(user => {

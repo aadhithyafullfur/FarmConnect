@@ -408,3 +408,23 @@ exports.deactivateAccount = async (req, res) => {
     });
   }
 };
+
+// GET ALL USERS (for chat/messaging purposes)
+exports.getAllUsers = async (req, res) => {
+  try {
+    console.log('📋 Fetching all users for messaging...');
+    
+    // Fetch all users, excluding password field
+    const users = await User.find({}).select('-password');
+    
+    console.log(`✅ Retrieved ${users.length} users`);
+    
+    res.json(users);
+  } catch (err) {
+    console.error('❌ Error fetching users:', err.message);
+    res.status(500).json({ 
+      msg: 'Error fetching users', 
+      error: err.message 
+    });
+  }
+};

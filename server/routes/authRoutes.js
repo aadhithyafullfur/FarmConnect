@@ -7,7 +7,8 @@ const {
   updateProfile, 
   changePassword, 
   updateSettings, 
-  deactivateAccount 
+  deactivateAccount,
+  getAllUsers
 } = require('../controllers/authController');
 const authMiddleware = require('../middleware/authMiddleware');
 const router = express.Router();
@@ -30,6 +31,7 @@ router.delete('/test-delete', (req, res) => {
 // Protected routes
 router.get('/verify', authMiddleware, verifyToken);
 router.get('/profile', authMiddleware, getProfile);
+router.get('/users', authMiddleware, getAllUsers);
 router.put('/profile', authMiddleware, updateProfile);
 router.put('/change-password', authMiddleware, changePassword);
 router.put('/settings', authMiddleware, updateSettings);

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import ChatBox from './ChatBox';
 
+const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:5003';
+
 const ChatInterface = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [chatList, setChatList] = useState([]);
@@ -35,7 +37,7 @@ const ChatInterface = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const response = await axios.get('/api/messages/chats', {
+      const response = await axios.get(`${API_BASE}/api/messages/chats`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setChatList(response.data);
@@ -49,7 +51,7 @@ const ChatInterface = () => {
   const fetchUnreadCount = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('/api/messages/unread', {
+      const response = await axios.get(`${API_BASE}/api/messages/unread`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setUnreadCount(response.data.unreadCount);

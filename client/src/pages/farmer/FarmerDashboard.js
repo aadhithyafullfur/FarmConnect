@@ -6,6 +6,7 @@ import { showSuccess, showError, showWarning } from "../../utils/notifications";
 import notificationService from "../../services/notificationService";
 import ChatInterface from "../../components/ChatInterface";
 import ChatStarter from "../../components/ChatStarter";
+import WhatsAppButton from "../../components/WhatsAppButton";
 import EditProductModal from "../../components/EditProductModal";
 
 function FarmerDashboard() {
@@ -618,7 +619,7 @@ function FarmerDashboard() {
                       <div className="relative h-48 bg-gray-700/50 overflow-hidden">
                         {product.image ? (
                           <img 
-                            src={product.image.startsWith('http') ? product.image : `http://localhost:5002${product.image}`} 
+                            src={product.image.startsWith('http') ? product.image : `http://localhost:5003${product.image}`} 
                             alt={product.name}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                             onError={(e) => {
@@ -1858,6 +1859,9 @@ function FarmerDashboard() {
 
       {/* Floating Chat Interface */}
       <ChatInterface />
+
+      {/* WhatsApp Style Chat */}
+      <WhatsAppButton />
     </div>
   );
 }

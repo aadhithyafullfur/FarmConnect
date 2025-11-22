@@ -5,6 +5,7 @@ import api from '../../services/api';
 import Navbar from '../../components/Navbar';
 import ChatInterface from '../../components/ChatInterface';
 import ChatStarter from '../../components/ChatStarter';
+import WhatsAppButton from '../../components/WhatsAppButton';
 
 function BuyerDashboard() {
   const { cart, addToCart, wishlist, toggleWishlist } = useShoppingContext();
@@ -250,7 +251,7 @@ function BuyerDashboard() {
         <div className="relative w-full aspect-square bg-slate-700 overflow-hidden group">
           {!imageError && product.image ? (
             <img 
-              src={product.image.startsWith('http') ? product.image : `http://localhost:5002${product.image}`} 
+              src={product.image.startsWith('http') ? product.image : `http://localhost:5003${product.image}`} 
               alt={product.name}
               className="w-full h-full object-cover"
               onError={() => setImageError(true)}
@@ -700,6 +701,9 @@ function BuyerDashboard() {
 
       {/* Floating Chat Interface */}
       <ChatInterface />
+
+      {/* WhatsApp Style Chat */}
+      <WhatsAppButton />
     </div>
   );
 }
